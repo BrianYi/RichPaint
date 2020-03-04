@@ -48,12 +48,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="small.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="RichPaint.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="image\BITMAP40334_1.bmp">
       <Filter>Resource Files</Filter>
     </Image>

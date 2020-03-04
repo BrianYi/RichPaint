@@ -2,7 +2,9 @@
 #include "Header.h"
 #include "RichPaint.h"
 
-void _MsgBox( HINSTANCE hInst, int uID, TCHAR *szBuffer, const TCHAR *szStr = NULL )
+extern HINSTANCE hInst;
+
+void _MsgBox( int uID, TCHAR *szBuffer, const TCHAR *szStr = NULL )
 {
 	if ( szStr )
 		lstrcpy( szBuffer, szStr );
@@ -10,7 +12,7 @@ void _MsgBox( HINSTANCE hInst, int uID, TCHAR *szBuffer, const TCHAR *szStr = NU
 		LoadString( hInst, uID, szBuffer, MAX_LOADSTRING );
 }
 
-void MsgBox( int type, HINSTANCE hInst, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *szText/* = NULL*/ )
+void MsgBox( int type, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *szText/* = NULL*/ )
 {
 	TCHAR szCaption[ MAX_LOADSTRING ];
 	TCHAR szContent[ MAX_LOADSTRING ];
@@ -18,8 +20,8 @@ void MsgBox( int type, HINSTANCE hInst, HWND hWnd, const TCHAR *szTitle/* = NULL
 	switch ( type )
 	{
 	case MSGBOX_UNFINISHED:
-		_MsgBox( hInst, IDS_MSGBOX_UNFINISHED_TITLE, szCaption, szTitle );
-		_MsgBox( hInst, IDS_MSGBOX_UNFINISHED_TEXT, szContent, szText );
+		_MsgBox( IDS_MSGBOX_UNFINISHED_TITLE, szCaption, szTitle );
+		_MsgBox( IDS_MSGBOX_UNFINISHED_TEXT, szContent, szText );
 		MessageBox( hWnd, szContent, szCaption, MB_ICONINFORMATION );
 		break;
 	default:
@@ -28,59 +30,60 @@ void MsgBox( int type, HINSTANCE hInst, HWND hWnd, const TCHAR *szTitle/* = NULL
 }
 
 void DealWithPencil( HDC hdc, HDC hdcMem, 
-					 POINT ptMouseStart, POINT ptMouseEnd, Tool tlPencil )
+					 POINT ptMouseStart, POINT ptMouseEnd,
+					 HPEN hPen)
 {
 	MoveToEx( hdc, ptMouseStart.x, ptMouseStart.y, NULL );
 	MoveToEx( hdcMem, ptMouseStart.x, ptMouseStart.y, NULL );
 
-	SelectObject( hdc, tlPencil.hPen );
-	SelectObject( hdcMem, tlPencil.hPen );
+	DeleteObject( SelectObject( hdc, hPen ) );
+	DeleteObject( SelectObject( hdcMem, hPen ) );
 
 	LineTo( hdc, ptMouseEnd.x, ptMouseEnd.y );
 	LineTo( hdcMem, ptMouseEnd.x, ptMouseEnd.y );
 }
 
 void DealWithBrush( HDC hdc, HDC hdcMem, 
-					POINT ptMouseStart, POINT ptMouseEnd, Tool tlBrush )
+					POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen )
 {
 	MoveToEx( hdc, ptMouseStart.x, ptMouseStart.y, NULL );
 	MoveToEx( hdcMem, ptMouseStart.x, ptMouseStart.y, NULL );
 
-	SelectObject( hdc, tlBrush.hPen );
-	SelectObject( hdcMem, tlBrush.hPen );
+	DeleteObject( SelectObject( hdc, hPen ) );
+	DeleteObject( SelectObject( hdcMem, hPen ) );
 
 	LineTo( hdc, ptMouseEnd.x, ptMouseEnd.y );
 	LineTo( hdcMem, ptMouseEnd.x, ptMouseEnd.y );
 }
 
 void DealWithAirbrush( HDC hdc, HDC hdcMem, 
-					   POINT ptMouseStart, POINT ptMouseEnd, Tool tlAirbrush )
+					   POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen )
 {
 	MoveToEx( hdc, ptMouseStart.x, ptMouseStart.y, NULL );
 	MoveToEx( hdcMem, ptMouseStart.x, ptMouseStart.y, NULL );
 
-	SelectObject( hdc, tlAirbrush.hPen );
-	SelectObject( hdcMem, tlAirbrush.hPen );
+	DeleteObject( SelectObject( hdc, hPen ) );
+	DeleteObject( SelectObject( hdcMem, hPen ) );
 
 	LineTo( hdc, ptMouseEnd.x, ptMouseEnd.y );
 	LineTo( hdcMem, ptMouseEnd.x, ptMouseEnd.y );
 }
 
 void DealWithEraser( HDC hdc, HDC hdcMem, 
-					 POINT ptMouseStart, POINT ptMouseEnd, Tool tlEraser )
+					 POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen )
 {
 	MoveToEx( hdc, ptMouseStart.x, ptMouseStart.y, NULL );
 	MoveToEx( hdcMem, ptMouseStart.x, ptMouseStart.y, NULL );
 
-	SelectObject( hdc, tlEraser.hPen );
-	SelectObject( hdcMem, tlEraser.hPen );
+	DeleteObject( SelectObject( hdc, hPen ) );
+	DeleteObject( SelectObject( hdcMem, hPen ) );
 
 	LineTo( hdc, ptMouseEnd.x, ptMouseEnd.y );
 	LineTo( hdcMem, ptMouseEnd.x, ptMouseEnd.y );
 }
 
 void DealWithText( HDC hdc, HDC hdcMem, 
-				   POINT ptMouseStart, POINT ptMouseEnd, Tool tlText )
+				   POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen )
 {
 	HCURSOR hCursor = LoadCursor( NULL, IDC_CROSS );
 	SetCursor( hCursor );
@@ -98,12 +101,13 @@ HPEN CreateEraser( )
 						 15, &lgbrsh, 0, NULL );
 }
 
-HPEN CreateAirbrush(HBITMAP hBitmap )
+HPEN CreateAirbrush( )
 {
 	LOGBRUSH lgbrsh;
 	lgbrsh.lbStyle = BS_PATTERN;
 	lgbrsh.lbColor = 0;
-	lgbrsh.lbHatch = ( ULONG_PTR ) hBitmap;
+	lgbrsh.lbHatch = ( ULONG_PTR ) LoadBitmap( hInst,
+											   MAKEINTRESOURCE( IDB_AIRBRUSH_EFFECT ) );
 	return ExtCreatePen( PS_GEOMETRIC,
 						 24, &lgbrsh, 0, NULL );
 }
@@ -165,6 +169,7 @@ HDC MenuEditUndo( std::vector<HDC>& hdcMemUndoStack, std::vector<HDC>& hdcMemRed
 
 HDC MenuEditRedo( std::vector<HDC>& hdcMemRedoStack, std::vector<HDC>& hdcMemUndoStack )
 {
+
 	if ( hdcMemUndoStack.size( ) == 0 )
 	{
 		MessageBox( NULL, TEXT( "ERROR:MenuEditRedo hdcMemUndoStack.size() == 0" ),

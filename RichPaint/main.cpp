@@ -7,13 +7,13 @@
 
 Tool tools[ ] =
 {
-	{ID_PENCIL,			IDC_PENCIL,			IDB_PENCIL,			NULL,NULL,							NULL,CreatePen( PS_SOLID, 1, 0 ),	NULL,NULL,NULL},
-	{ID_BRUSH,			IDC_BRUSH,			IDB_BRUSH,			NULL,NULL,							NULL,CreatePen( PS_SOLID, 10, 0 ),	NULL,NULL,NULL},
-	{ID_AIRBRUSH,		IDC_AIRBRUSH,		IDB_AIRBRUSH,		NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
-	{ID_ERASER,			IDC_ERASER,			IDB_ERASER,			NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
+	{ID_PENCIL,			IDC_PENCIL,			IDB_PENCIL,			NULL,NULL,							NULL,CreatePen( PS_SOLID, 1, 0 ),	(HBRUSH)GetStockObject(BLACK_BRUSH),NULL,NULL},
+	{ID_BRUSH,			IDC_BRUSH,			IDB_BRUSH,			NULL,NULL,							NULL,CreatePen( PS_SOLID, 10, 0 ),	( HBRUSH ) GetStockObject( BLACK_BRUSH ),NULL,NULL},
+	{ID_AIRBRUSH,		IDC_AIRBRUSH,		IDB_AIRBRUSH,		NULL,NULL,							NULL,NULL,							( HBRUSH ) GetStockObject( BLACK_BRUSH ),NULL,NULL},
+	{ID_ERASER,			IDC_ERASER,			IDB_ERASER,			NULL,NULL,							NULL,NULL,							( HBRUSH ) GetStockObject( WHITE_BRUSH ),NULL,NULL},
 
-	{ID_TEXT,			IDC_TEXT,			IDB_TEXT,			NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
-	{ID_FILLWITHCOLOR,	IDC_FILLWITHCOLOR,	IDB_FILLWITHCOLOR,	NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
+	{ID_TEXT,			IDC_TEXT,			IDB_TEXT,			NULL,NULL,							NULL,NULL,							( HBRUSH ) GetStockObject( WHITE_BRUSH ),NULL,NULL},
+	{ID_FILLWITHCOLOR,	IDC_FILLWITHCOLOR,	IDB_FILLWITHCOLOR,	NULL,NULL,							NULL,NULL,							( HBRUSH ) GetStockObject( BLACK_BRUSH ),NULL,NULL},
 	{ID_COLORPICKER,	IDC_COLORPICKER,	IDB_COLORPICKER,	NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
 
 	{ID_MAGNIFIER,		IDC_MAGNIFIER,		IDB_MAGNIFIER,		NULL,NULL,							NULL,NULL,							NULL,NULL,NULL},
@@ -37,6 +37,7 @@ const DWORD cTools = sizeof tools / sizeof tools[ 0 ];
 HWND hWndEditColor;
 HWND hWndCurColor;
 HWND hWndUndo, hWndRedo;
+HWND hWndTransparent;
 
 DWORD dwCurToolIdx = 0;
 DWORD cColor = cBasicColor * cBasicColor * cBasicColor;
@@ -47,18 +48,21 @@ std::vector<HDC> hdcMemCanvasUndoStack;
 std::vector<HDC> hdcMemCanvasRedoStack;
 HDC hdcMemCanvas;
 HBITMAP hBitmapCanvas;
+HPEN g_hPen;
 
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[ MAX_LOADSTRING ];                  // The title bar text
 WCHAR szWindowClass[ MAX_LOADSTRING ];            // the main window class name
+WCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass( HINSTANCE hInstance );
 BOOL                InitInstance( HINSTANCE, int );
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 INT_PTR CALLBACK    About( HWND, UINT, WPARAM, LPARAM );
+LRESULT CALLBACK    TransparentWndProc( HWND, UINT, WPARAM, LPARAM );
 
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
 					   _In_opt_ HINSTANCE hPrevInstance,
@@ -108,6 +112,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
 ATOM MyRegisterClass( HINSTANCE hInstance )
 {
 	WNDCLASSEXW wcex;
+	BOOL bSuccess = FALSE;
 
 	wcex.cbSize = sizeof( WNDCLASSEX );
 
@@ -122,8 +127,15 @@ ATOM MyRegisterClass( HINSTANCE hInstance )
 	wcex.lpszMenuName = MAKEINTRESOURCEW( IDC_RICHPAINT );
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon( wcex.hInstance, MAKEINTRESOURCE( IDI_RICHPAINT ) );
+	bSuccess = RegisterClassExW( &wcex );
 
-	return RegisterClassExW( &wcex );
+	lstrcpy( szTransparentClass, TEXT( "TRANSPARENT" ) );
+	wcex.lpfnWndProc = TransparentWndProc;
+	wcex.hbrBackground = (HBRUSH)GetStockObject( BLACK_BRUSH );
+	wcex.lpszClassName = szTransparentClass;
+	bSuccess = RegisterClassExW( &wcex );
+
+	return TRUE;
 }
 
 //
@@ -142,7 +154,6 @@ BOOL InitInstance( HINSTANCE hInstance, int nCmdShow )
 
 	HWND hWnd = CreateWindowW( szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 							   CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr );
-
 	if ( !hWnd )
 	{
 		return FALSE;
@@ -228,22 +239,23 @@ LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		dwId = x * cBasicColor * cBasicColor + y * cBasicColor + z;
 
 		hWndBasicColor[ dwId ] = CreateWindow( TEXT( "button" ), NULL,
-											   WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+											   WS_VISIBLE | WS_CHILD | BS_OWNERDRAW | WS_CLIPSIBLINGS,
 											   0, 0, 0, 0,
 											   hWnd, ( HMENU ) ( COLORID + dwId ), hInst, NULL );
 		SetWindowLongPtr( hWndBasicColor[ dwId ], GWLP_USERDATA, dwColor );
 	}
+	
+
 	hWndCurColor = CreateWindow( TEXT( "button" ), NULL,
 								 WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
 								 0, 0, 0, 0,
 								 hWnd, ( HMENU ) ( ID_CURCOLOR ), hInst, NULL );
-
+	
 	hWndEditColor = CreateWindow( TEXT( "button" ), NULL,
 								  WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
 								  0, 0, 0, 0,
 								  hWnd, ( HMENU ) ( ID_EDITCOLOR ), hInst, NULL );
-	SetWindowLongPtr( hWndBasicColor[ dwId ], GWLP_USERDATA, RGB( 0, 0, 0 ) );
-	
+
 	hWndUndo = CreateWindow( TEXT( "button" ), NULL,
 							 WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
 							 0, 0, 0, 0,
@@ -265,11 +277,6 @@ LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		if ( !tools[ i ].hCursor )
 			tools[ i ].hCursor = LoadCursor( hInst, MAKEINTRESOURCE( tools[ i ].idCursor ) );
 	}
-
-
-	tools[ ID_ERASER - TOOLID ].hPen = CreateEraser( );
-	tools[ ID_AIRBRUSH - TOOLID ].hPen = CreateAirbrush( LoadBitmap( hInst, 
-																	 MAKEINTRESOURCE( IDB_AIRBRUSH_EFFECT ) ) );
 
 	// global cursor
 	dwCurToolIdx = 0;
@@ -297,8 +304,74 @@ LRESULT OnLButtonDown( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	POINT pt;
 	pt.x = ( short ) LOWORD( lParam );
 	pt.y = ( short ) HIWORD( lParam );
+	
+	SetFocus( hWnd );
 
 	if ( !PtInRect( &canvasRect, pt ) ) return 0;
+
+	HDC hdc = GetDC( hWnd );
+	DWORD dwCurColor = GetWindowLongPtr( hWndCurColor, GWLP_USERDATA );
+	switch ( tools[ dwCurToolIdx ].id )
+	{
+	case ID_PENCIL:
+		g_hPen = CreatePen( PS_SOLID, 1, dwCurColor );
+		break;
+	case ID_BRUSH:
+		g_hPen = CreatePen( PS_SOLID, 10, dwCurColor );
+		break;
+	case ID_AIRBRUSH:
+		g_hPen = CreateAirbrush( );
+		break;
+	case ID_ERASER:
+		g_hPen = CreateEraser( );
+		break;
+	case ID_TEXT:
+	{
+		// TODO:
+		//		I wannt to create a transparent child window, only border and text is visible
+		//		but i always get fail when create a child window with attribute of WS_EX_LAYERED,
+		//		it seems to try other method.
+		//		The official said child window with WS_EX_LAYERED cannot only support win 8
+		//	
+		// 		hWndTransparent = CreateWindowEx( WS_EX_TRANSPARENT | WS_EX_LAYERED, szTransparentClass, szTitle, 
+		// 										  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+		// 										  CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInst, nullptr );
+
+		hWndTransparent = CreateWindowEx( WS_EX_LAYERED, szTransparentClass, NULL,
+										  WS_OVERLAPPEDWINDOW | WS_CHILD,
+										pt.x, pt.y, 200, 100,
+										hWnd, ( HMENU ) ID_TRABSPARENT_WIN, hInst, NULL );
+		
+		break;
+	}
+	case ID_FILLWITHCOLOR:
+	{
+		SelectObject( hdc, tools[dwCurToolIdx].hBrush );
+		SelectObject( hdcMemCanvas, tools[ dwCurToolIdx ].hBrush );
+		ExtFloodFill( hdc, pt.x, pt.y,
+					  GetWindowLongPtr( hWndCurColor, GWLP_USERDATA ), FLOODFILLBORDER );
+		ExtFloodFill( hdcMemCanvas, pt.x, pt.y, 
+					  GetWindowLongPtr(hWndCurColor, GWLP_USERDATA), FLOODFILLBORDER );
+		break;
+	}
+	case ID_COLORPICKER:
+		break;
+	case ID_MAGNIFIER:
+	case ID_ZOOMIN:
+	case ID_ZOOMOUT:
+	case ID_COPY:
+	case ID_PASTE:
+	case ID_CUT:
+	case ID_LINE:
+	case ID_CURVE:
+	case ID_ROUNDEDRECT:
+	case ID_RECT:
+	case ID_OVAL:
+		break;
+	default:
+		break;
+	}
+	ReleaseDC( hWnd, hdc );
 
 	bLButtonDown = TRUE;
 	ptMouse = pt;
@@ -319,14 +392,11 @@ LRESULT OnLButtonUp( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 			hdcMemCanvas = CopyHdcBitmapMem( hdcMemCanvas );
 
 			// clear all redo
-			if ( !hdcMemCanvasRedoStack.empty( ) )
+			for ( auto it : hdcMemCanvasRedoStack )
 			{
-				for ( auto it : hdcMemCanvasRedoStack )
-				{
-					DeleteDC( it );
-				}
-				hdcMemCanvasRedoStack.clear( );
+				DeleteDC( it );
 			}
+			hdcMemCanvasRedoStack.clear( );
 		}
 	}
 	ReleaseCapture( );
@@ -348,36 +418,36 @@ LRESULT OnMouseMove( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	bDrawing = TRUE;
 
 	HDC hdc = GetDC( hWnd );
-	switch ( tools[ dwCurToolIdx ].idCursor )
+	switch ( tools[ dwCurToolIdx ].id )
 	{
-	case IDC_PENCIL:
-		DealWithPencil( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, tools[ dwCurToolIdx ] );
+	case ID_PENCIL:
+		DealWithPencil( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, g_hPen );
 		break;
-	case IDC_BRUSH:
-		DealWithBrush( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, tools[ dwCurToolIdx ] );
+	case ID_BRUSH:
+		DealWithBrush( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, g_hPen );
 		break;
-	case IDC_AIRBRUSH:
-		DealWithAirbrush( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, tools[ dwCurToolIdx ] );
+	case ID_AIRBRUSH:
+		DealWithAirbrush( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, g_hPen );
 		break;
-	case IDC_ERASER:
-		DealWithEraser( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, tools[ dwCurToolIdx ] );
+	case ID_ERASER:
+		DealWithEraser( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, g_hPen );
 		break;
-	case IDC_TEXT:
-		DealWithText( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, tools[ dwCurToolIdx ] );
+	case ID_TEXT:
+		DealWithText( hdc, hdcMemCanvas, ptMouseStart, ptMouseEnd, g_hPen );
 		break;
-	case IDC_FILLWITHCOLOR:
-	case IDC_COLORPICKER:
-	case IDC_MAGNIFIER:
-	case IDC_ZOOMIN:
-	case IDC_ZOOMOUT:
-	case IDC_COPY:
-	case IDC_PASTE:
-	case IDC_CUT:
-	case IDC_LINE:
-	case IDC_CURVE:
-	case IDC_ROUNDEDRECT:
-	case IDC_RECT:
-	case IDC_OVAL:
+	case ID_FILLWITHCOLOR:
+	case ID_COLORPICKER:
+	case ID_MAGNIFIER:
+	case ID_ZOOMIN:
+	case ID_ZOOMOUT:
+	case ID_COPY:
+	case ID_PASTE:
+	case ID_CUT:
+	case ID_LINE:
+	case ID_CURVE:
+	case ID_ROUNDEDRECT:
+	case ID_RECT:
+	case ID_OVAL:
 		break;
 	}
 	ReleaseDC( hWnd, hdc );
@@ -394,29 +464,31 @@ LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	//
 	// Color window
 	//
+	DWORD dwIconWidth = ICONSIZEW + 8;
+	DWORD dwIconHeight = ICONSIZEH + 8;
 	for ( i = 0; i < cColor; ++i )
 	{
 		x = i % COLNUM;
 		y = i / COLNUM;
 		MoveWindow( hWndBasicColor[ i ],
-					10 + x * ( ICONSIZEX + 5 ),
-					10 + y * ( ICONSIZEY + 5 ),
-					ICONSIZEX, ICONSIZEY, TRUE );
+					10 + x * ( dwIconWidth + 5 ),
+					10 + y * ( dwIconHeight + 5 ),
+					dwIconWidth, dwIconHeight, TRUE );
 	}
 
 	x = i % COLNUM;
 	y = i / COLNUM;
 	MoveWindow( hWndEditColor,
-				10 + x * ( ICONSIZEX + 5 ),
-				10 + 20 + y * ( ICONSIZEY + 5 ),
-				ICONSIZEX, ICONSIZEY, TRUE );
+				10 + x * ( dwIconWidth + 5 ),
+				10 + 20 + y * ( dwIconHeight + 5 ),
+				dwIconWidth, dwIconHeight, TRUE );
 	++i;
 	x = i % COLNUM;
 	y = i / COLNUM;
 	MoveWindow( hWndCurColor,
-				10 + x * ( ICONSIZEX + 5 ),
-				10 + 20 + y * ( ICONSIZEY + 5 ),
-				ICONSIZEX, ICONSIZEY, TRUE );
+				10 + x * ( dwIconWidth + 5 ),
+				10 + 20 + y * ( dwIconHeight + 5 ),
+				dwIconWidth, dwIconHeight, TRUE );
 
 	//============================================================================
 	//
@@ -428,9 +500,9 @@ LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		x = i % COLNUM;
 		y = i / COLNUM;
 		MoveWindow( tools[ i - base ].hWnd,
-					10 + x * ( ICONSIZEX + 5 ),
-					10 + y * ( ICONSIZEY + 5 ),
-					ICONSIZEX, ICONSIZEY, TRUE );
+					10 + x * ( dwIconWidth + 5 ),
+					10 + y * ( dwIconHeight + 5 ),
+					dwIconWidth, dwIconHeight, TRUE );
 	}
 
 	//============================================================================
@@ -441,20 +513,25 @@ LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	x = i % COLNUM;
 	y = i / COLNUM;
 	MoveWindow( hWndUndo,
-				10 + x * ( ICONSIZEX + 5 ),
-				10 + 20 + y * ( ICONSIZEY + 5 ),
-				ICONSIZEX, ICONSIZEY, TRUE );
+				10 + x * ( dwIconWidth + 5 ),
+				10 + 20 + y * ( dwIconHeight + 5 ),
+				dwIconWidth, dwIconHeight, TRUE );
 	++i;
 	x = i % COLNUM;
 	y = i / COLNUM;
 	MoveWindow( hWndRedo,
-				10 + x * ( ICONSIZEX + 5 ),
-				10 + 20 + y * ( ICONSIZEY + 5 ),
-				ICONSIZEX, ICONSIZEY, TRUE );
-	
+				10 + x * ( dwIconWidth + 5 ),
+				10 + 20 + y * ( dwIconHeight + 5 ),
+				dwIconWidth, dwIconHeight, TRUE );
+
+	//============================================================================
+	//
+	// Transparent window
+	//
+	//MoveWindow(hWndTransparent, 0, 0, )
 
 	// canvas rectangle
-	canvasRect.left = ( ICONSIZEX + 5 ) * COLNUM + 20;
+	canvasRect.left = ( dwIconWidth + 5 ) * COLNUM + 20;
 	canvasRect.right = cxClient - 10;
 	canvasRect.top = 10;
 	canvasRect.bottom = cyClient - 10;
@@ -465,63 +542,19 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	int wmId = LOWORD( wParam );
 	HMENU hMenu = GetMenu( hWnd );
-	DWORD dwCurColor;
-	LOGPEN lgPen;
 	// Parse the menu selections:
-
+	
 	if ( IS_COLORID( wmId ) ) // color select
 	{
-		dwCurColor = GetWindowLongPtr( ( HWND ) lParam, GWLP_USERDATA );
-		switch ( tools[ dwCurToolIdx ].idCursor )
-		{
-		case IDC_PENCIL:
-		case IDC_BRUSH:
-		case IDC_LINE:
-		case IDC_CURVE:
-		case IDC_ROUNDEDRECT:
-		case IDC_RECT:
-		case IDC_OVAL:
-		{
-			GetObject( tools[ dwCurToolIdx ].hPen, sizeof lgPen, &lgPen );
-			DeleteObject( tools[ dwCurToolIdx ].hPen );
-			lgPen.lopnColor = dwCurColor;
-			tools[ dwCurToolIdx ].hPen = CreatePenIndirect( &lgPen );
-
-			SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, dwCurColor );
-			InvalidateRect( hWndCurColor, NULL, TRUE );
-			break;
-		}
-		case IDC_AIRBRUSH:
-		case IDC_ERASER:
-			break;
-		case IDC_TEXT:
-		case IDC_FILLWITHCOLOR:
-			//case IDC_COLORPICKER:
-		case IDC_MAGNIFIER:
-			//case IDC_ZOOMIN:
-			//case IDC_ZOOMOUT:
-			//case IDC_COPY:
-			//case IDC_PASTE:
-			//case IDC_CUT:
-		default:
-			break;
-		}
+		SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, 
+						  GetWindowLongPtr( ( HWND ) lParam, GWLP_USERDATA ) );
+		InvalidateRect( hWndCurColor, NULL, TRUE );
 	}
 	else if ( IS_TOOLID( wmId ) )
 	{
 		// set the cursor
 		dwCurToolIdx = INDEX_TOOL( wmId );
 		SET_GLOBAL_CURSOR( tools[ dwCurToolIdx ].hCursor );
-
-		// set the current color
-		LOGPEN lgPen;
-		GetObject( tools[ dwCurToolIdx ].hPen, sizeof LOGPEN, &lgPen );
-		SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, lgPen.lopnColor );
-		InvalidateRect( hWndCurColor, NULL, TRUE );
-
-		// assign the attribute of this tool
-		if ( wmId >= ID_TEXT )
-			MsgBox( MSGBOX_UNFINISHED, hInst, hWnd );
 	}
 	else if ( wmId == ID_EDITCOLOR )
 	{
@@ -536,13 +569,7 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 
 		if ( ChooseColor( &cc ) )
 		{
-			LOGPEN lgPen;
-			GetObject( tools[ dwCurToolIdx ].hPen, sizeof lgPen, &lgPen );
-			DeleteObject( tools[ dwCurToolIdx ].hPen );
-			lgPen.lopnColor = cc.rgbResult;
-			tools[ dwCurToolIdx ].hPen = CreatePenIndirect( &lgPen );
-
-			SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, lgPen.lopnColor );
+			SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, cc.rgbResult );
 			InvalidateRect( hWndCurColor, NULL, TRUE );
 		}
 	} else switch ( wmId )
@@ -553,11 +580,25 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 					 wmId == ID_UNDO? IDM_EDIT_UNDO: IDM_EDIT_REDO, 0 );
 		return 0;
 	case IDM_FILE_NEW:
+		DeleteDC( hdcMemCanvas );
+		while (hdcMemCanvasUndoStack.size()>1)
+		{
+			DeleteDC( hdcMemCanvasUndoStack.back( ) );
+			hdcMemCanvasUndoStack.pop_back( );
+		}
+		hdcMemCanvas = CopyHdcBitmapMem( hdcMemCanvasUndoStack.back( ) );
+		while ( !hdcMemCanvasRedoStack.empty( ) )
+		{
+			DeleteDC( hdcMemCanvasRedoStack.back( ) );
+			hdcMemCanvasRedoStack.pop_back( );
+		}
+		InvalidateRect( hWnd, NULL, FALSE );
+		return 0;
 	case IDM_FILE_OPEN:
 	case IDM_FILE_SAVE:
 	case IDM_FILE_SAVEAS:
 	case IDM_FILE_PRINT:
-		MsgBox( MSGBOX_UNFINISHED, hInst, hWnd );
+		MsgBox( MSGBOX_UNFINISHED, hWnd );
 		break;
 	case IDM_FILE_EXIT:
 		SendMessage( hWnd, WM_CLOSE, 0, 0 );
@@ -609,7 +650,14 @@ LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	rcButton.top += cy / 8;
 	rcButton.bottom -= cy / 8;
 
+	// draw background color
 	FillRect( pDIS->hDC, &pDIS->rcItem, GetSysColorBrush( COLOR_BTNFACE ) );
+	
+	// draw focus
+	if ( pDIS->itemState & ODS_FOCUS )
+	{
+		FillRect( pDIS->hDC, &pDIS->rcItem, GetSysColorBrush( COLOR_BTNSHADOW ) );
+	}
 
 	if ( IS_COLORID( pDIS->CtlID ) )
 	{
@@ -621,7 +669,8 @@ LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
 		HDC hdcMem = CreateCompatibleDC( pDIS->hDC );
 		SelectObject( hdcMem, tools[ INDEX_TOOL( pDIS->CtlID ) ].hBitmap );
-		BitBlt( pDIS->hDC, 4, 4, 32, 32, hdcMem, 0, 0, SRCCOPY );
+		BitBlt( pDIS->hDC, (cx - ICONSIZEW) / 2, (cy - ICONSIZEH) / 2, 
+				ICONSIZEW, ICONSIZEH, hdcMem, 0, 0, SRCCOPY );
 		DeleteDC( hdcMem );
 	}
 	else switch (pDIS->CtlID )
@@ -632,7 +681,8 @@ LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
 		HDC hdcMem = CreateCompatibleDC( pDIS->hDC );
 		SelectObject( hdcMem, LoadBitmap( hInst, MAKEINTRESOURCE( pDIS->CtlID ) ) );
-		BitBlt( pDIS->hDC, 4, 4, 32, 32, hdcMem, 0, 0, SRCCOPY );
+		BitBlt( pDIS->hDC, ( cx - ICONSIZEW ) / 2, ( cy - ICONSIZEH ) / 2, 
+				ICONSIZEW, ICONSIZEH, hdcMem, 0, 0, SRCCOPY );
 		DeleteDC( hdcMem );
 		break;
 	}
@@ -640,15 +690,6 @@ LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		break;
 	}
 
-
-	if ( pDIS->itemState & ODS_FOCUS )
-	{
-		pDIS->rcItem.left += cx / 16;
-		pDIS->rcItem.right -= cx / 16;
-		pDIS->rcItem.top += cy / 16;
-		pDIS->rcItem.bottom -= cy / 16;
-		DrawFocusRect( pDIS->hDC, &pDIS->rcItem );
-	}
 	return 0;
 }
 
@@ -676,4 +717,45 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 		break;
 	}
 	return ( INT_PTR ) FALSE;
+}
+
+LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	static BOOL bLButtonDown = FALSE;
+	static POINT ptMouse;
+	switch ( message )
+	{
+	case WM_LBUTTONDOWN:
+	{
+		bLButtonDown = TRUE;
+		SetCapture( hWnd );
+		return 0;
+	}
+	case WM_LBUTTONUP:
+	{
+		if ( bLButtonDown )
+		{
+			bLButtonDown = FALSE;
+		}
+		ReleaseCapture( );
+		return 0;
+	}
+	case WM_MOUSEMOVE:
+	{
+		POINT pt;
+		pt.x = LOWORD( lParam );
+		pt.y = HIWORD( lParam );
+
+// 		if ( bLButtonDown )
+// 		{
+// 			SetWindowPos( hWnd, NULL, pt.x, pt.y, 0, 0, SWP_NOSIZE );
+// 		}
+		return 0;
+	}
+	case WM_DESTROY:
+		break;
+	default:
+		break;
+	}
+	return DefWindowProc( hWnd, message, wParam, lParam );
 }

@@ -27,8 +27,7 @@ enum
 	MSGBOX_UNFINISHED,
 
 };
-void MsgBox( int type, HINSTANCE hInst, HWND hWnd,
-			 const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );
+void MsgBox( int type, HWND hWnd, const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );
 
 
 //============================================================================
@@ -49,18 +48,18 @@ LRESULT OnDestroy( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
 //
 // Command
 //
-void DealWithPencil( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, Tool tlPencil );
-void DealWithBrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, Tool tlBrush );
-void DealWithAirbrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, Tool tlAirbrush );
-void DealWithEraser( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, Tool tlEraser );
-void DealWithText( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, Tool tlText );
+void DealWithPencil( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
+void DealWithBrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
+void DealWithAirbrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
+void DealWithEraser( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
+void DealWithText( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
 
 //============================================================================
 //
 // Tool
 //
 HPEN CreateEraser( );
-HPEN CreateAirbrush( HBITMAP hBitmap );
+HPEN CreateAirbrush( );
 HBITMAP CopyBitmap( HBITMAP hBitmapSrc );
 HDC CopyHdcBitmapMem( HDC hdcMemSrc );
 

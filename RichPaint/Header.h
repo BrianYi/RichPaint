@@ -1,8 +1,12 @@
 #pragma once
 #include "resource.h"
 
-#define MAX_LOADSTRING 100
-
+//============================================================================
+//
+// macro for constant
+//
+#define MAX_LOADSTRING	100
+#define EXTRASIZE		1024
 
 //============================================================================
 //
@@ -33,6 +37,7 @@
 #define ID_EDITCOLOR					IDB_EDITCOLOR
 #define ID_UNDO							IDB_UNDO
 #define ID_REDO							IDB_REDO
+#define ID_TRABSPARENT_WIN				503
 
 
 //============================================================================
@@ -45,8 +50,8 @@
 #define EDITCOLORID	500
 #define CANVASID	1000
 #define COLNUM		8
-#define ICONSIZEX	40
-#define ICONSIZEY	40
+#define ICONSIZEW	32
+#define ICONSIZEH	32
 
 //============================================================================
 //

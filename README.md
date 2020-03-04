@@ -1,5 +1,5 @@
-win32的一个练手,纯为熟悉下api的使用
-一个模仿Win10的Paint程序
+A mimic of Paint of Win10, I wanna make it more powerful like Notepad++.
+Not only paint, but also powerful operations like typing text, insert picture, make gif, etc.
 There're a lot to do...
 
 # screenshot
@@ -7,3 +7,10 @@ There're a lot to do...
 
 # gif
 ![avatar](./Screenshot/2020013114584460.gif)
+
+# TODO
+- [ ] Add text frame, user can type text into the text frame
+- [ ] Screen clip
+- [ ] Scamble
+- [ ] insert picture(mainly about bitmap) into canvas, save canvas as bitmap
+- [ ] save the entire file
