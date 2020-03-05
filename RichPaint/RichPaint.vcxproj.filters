@@ -146,5 +146,6 @@
     <None Include="cursor\Cursor155.cur">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\README.md" />
   </ItemGroup>
 </Project>

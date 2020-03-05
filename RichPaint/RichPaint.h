@@ -12,23 +12,10 @@ struct Tool
 	HWND hWnd;
 	HCURSOR hCursor;
 	HBITMAP hBitmap;
-	HPEN hPen;
 	HBRUSH hBrush;
 	POINT	ptBeg;
 	POINT	ptEnd;
 };
-
-//============================================================================
-//
-// Error Message
-//
-enum 
-{
-	MSGBOX_UNFINISHED,
-
-};
-void MsgBox( int type, HWND hWnd, const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );
-
 
 //============================================================================
 //
@@ -70,3 +57,22 @@ HDC CopyHdcBitmapMem( HDC hdcMemSrc );
 //
 HDC MenuEditUndo( std::vector<HDC>& hdcMemUndoStack, std::vector<HDC>& hdcMemRedoStack );
 HDC MenuEditRedo( std::vector<HDC>& hdcMemRedoStack, std::vector<HDC>& hdcMemUndoStack );
+
+
+//============================================================================
+//
+// Debug tools
+//
+void DebugShowPosition( HDC hdc, HDC hdcMem, int x, int y, POINT pt );
+
+
+//============================================================================
+//
+// Message Box
+//
+enum
+{
+	MSGBOX_UNFINISHED,
+
+};
+void MsgBox( int type, HWND hWnd, const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );

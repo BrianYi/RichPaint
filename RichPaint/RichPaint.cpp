@@ -4,31 +4,6 @@
 
 extern HINSTANCE hInst;
 
-void _MsgBox( int uID, TCHAR *szBuffer, const TCHAR *szStr = NULL )
-{
-	if ( szStr )
-		lstrcpy( szBuffer, szStr );
-	else
-		LoadString( hInst, uID, szBuffer, MAX_LOADSTRING );
-}
-
-void MsgBox( int type, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *szText/* = NULL*/ )
-{
-	TCHAR szCaption[ MAX_LOADSTRING ];
-	TCHAR szContent[ MAX_LOADSTRING ];
-
-	switch ( type )
-	{
-	case MSGBOX_UNFINISHED:
-		_MsgBox( IDS_MSGBOX_UNFINISHED_TITLE, szCaption, szTitle );
-		_MsgBox( IDS_MSGBOX_UNFINISHED_TEXT, szContent, szText );
-		MessageBox( hWnd, szContent, szCaption, MB_ICONINFORMATION );
-		break;
-	default:
-		break;
-	}
-}
-
 void DealWithPencil( HDC hdc, HDC hdcMem, 
 					 POINT ptMouseStart, POINT ptMouseEnd,
 					 HPEN hPen)
@@ -183,4 +158,38 @@ HDC MenuEditRedo( std::vector<HDC>& hdcMemRedoStack, std::vector<HDC>& hdcMemUnd
 		hdcMemRedoStack.pop_back( );
 	}
 	return CopyHdcBitmapMem( hdcMemUndoStack.back( ) );
+}
+
+void DebugShowPosition( HDC hdc, HDC hdcMem, int x, int y, POINT pt )
+{
+	TCHAR szBuffer[ 128 ];
+
+	wsprintf( szBuffer, TEXT( "(%-4d, %-4d)" ), pt.x, pt.y );
+	TextOut( hdc, x, y, szBuffer, lstrlen( szBuffer ) );
+	TextOut( hdcMem, x, y, szBuffer, lstrlen( szBuffer ) );
+}
+
+void _MsgBox( int uID, TCHAR *szBuffer, const TCHAR *szStr = NULL )
+{
+	if ( szStr )
+		lstrcpy( szBuffer, szStr );
+	else
+		LoadString( hInst, uID, szBuffer, MAX_LOADSTRING );
+}
+
+void MsgBox( int type, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *szText/* = NULL*/ )
+{
+	TCHAR szCaption[ MAX_LOADSTRING ];
+	TCHAR szContent[ MAX_LOADSTRING ];
+
+	switch ( type )
+	{
+	case MSGBOX_UNFINISHED:
+		_MsgBox( IDS_MSGBOX_UNFINISHED_TITLE, szCaption, szTitle );
+		_MsgBox( IDS_MSGBOX_UNFINISHED_TEXT, szContent, szText );
+		MessageBox( hWnd, szContent, szCaption, MB_ICONINFORMATION );
+		break;
+	default:
+		break;
+	}
 }
