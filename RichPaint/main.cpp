@@ -743,10 +743,11 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 	static TCHAR *pBuffer;
 	static DWORD dwCharSet = DEFAULT_CHARSET;
 	static HFONT hFont;
+	static HDC hdcMem;
+	static HMENU hMenu;
 	PAINTSTRUCT ps;
 	TEXTMETRIC tm;
 	int i, y;
-	static HDC hdcMem;
 	switch ( message )
 	{
 	case WM_LINECHANGE:
@@ -801,7 +802,54 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		pBuffer = ( TCHAR * ) malloc( cxMaxBuffer * cyMaxBuffer * sizeof TCHAR );
 		_tcsnset( pBuffer, TEXT( ' ' ), ( size_t ) ( cxMaxBuffer * cyMaxBuffer ) );
 
+		if ( hMenu == NULL )
+		{
+			hMenu = CreatePopupMenu( );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_CUT, TEXT( "Cut" ) );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_COPY, TEXT( "Copy" ) );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_PASTE, TEXT( "Paste" ) );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_DEL, TEXT( "Delete" ) );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_SELALL, TEXT( "Select All" ) );
+			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_FONT, TEXT("Font") );
+			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_FINDREPLACE, TEXT( "Find or Replace" ) );
+			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo" ) );
+
+			SetMenu( hWnd, hMenu );
+		}
+
 		break;
+	}
+	case WM_CONTEXTMENU:
+	{
+		POINT pt;
+		pt.x = ( short ) LOWORD( lParam );
+		pt.y = ( short ) HIWORD( lParam );
+		TrackPopupMenu( hMenu, TPM_RIGHTBUTTON, pt.x, pt.y,
+						0, hWnd, NULL );
+		return 0;
+	}
+	case WM_COMMAND:
+	{
+		int wmId = LOWORD( wParam );
+		switch ( wmId )
+		{
+		case IDM_TRANS_CUT:
+		case IDM_TRANS_COPY:
+		case IDM_TRANS_PASTE:
+		case IDM_TRANS_DEL:
+		case IDM_TRANS_SELALL:
+		case IDM_TRANS_FONT:
+		case IDM_TRANS_FINDREPLACE:
+		case IDM_TRANS_UNDO:
+			MsgBox( MSGBOX_UNFINISHED, hWnd );
+			break;
+		default:
+			break;
+		}
+		return 0;
 	}
 	case WM_SIZE:
 	{

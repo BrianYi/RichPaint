@@ -39,6 +39,18 @@
 #define ID_REDO							IDB_REDO
 #define ID_TRABSPARENT_WIN				503
 
+//============================================================================
+//
+// Transparent Menu id
+//
+#define IDM_TRANS_CUT					32800
+#define IDM_TRANS_COPY					32801
+#define IDM_TRANS_PASTE					32802
+#define IDM_TRANS_DEL					32803
+#define IDM_TRANS_SELALL				32804
+#define IDM_TRANS_FONT					32805
+#define IDM_TRANS_FINDREPLACE			32806
+#define IDM_TRANS_UNDO					32807
 
 //============================================================================
 //
