@@ -855,12 +855,11 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		hFont = CreateFontIndirect( &logFont );
 		HDC hdc = GetDC( hWnd );
 		GetTextMetrics( hdc, &tm );
-		SIZE iSize;
-		GetTextExtentPoint( hdc, pBuffer, cxBuffer, &iSize );
-
+		cyChar = abs(logFont.lfHeight);
+		cxChar = tm.tmAveCharWidth * ( cyChar / tm.tmHeight );
 		RECT rcWindow;
-		int cxClient = iSize.cx;
-		int cyClient = iSize.cy;
+		int cxClient = cxChar * cxBuffer;
+		int cyClient = cyChar * cyBuffer;
 
 		HWND hwndParent = GetParent( hWnd );
 		GetWindowRect( hWnd, &rcWindow );
