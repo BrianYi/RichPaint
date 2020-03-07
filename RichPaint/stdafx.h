@@ -22,3 +22,4 @@
 #include "Header.h"
 #include <commdlg.h>
 #include <vector>
+#include <dwmapi.h>

@@ -51,6 +51,7 @@
 #define IDM_TRANS_FONT					32805
 #define IDM_TRANS_FINDREPLACE			32806
 #define IDM_TRANS_UNDO					32807
+#define IDM_TRANS_REDO					32808
 
 //============================================================================
 //

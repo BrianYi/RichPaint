@@ -343,6 +343,7 @@ LRESULT OnLButtonDown( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 										WS_SIZEBOX | WS_CHILD | WS_VISIBLE,
 										pt.x,pt.y, 200, 100,
 										hWnd, ( HMENU ) ID_TRABSPARENT_WIN, hInst, NULL );
+
 		SetFocus( hWndTransparent );
 		break;
 	}
@@ -733,6 +734,31 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 #define CARET_X(iChar)	(iChar % cxBuffer)
 #define CARET_Y(iChar)	(iChar / cxBuffer)
 #define MAXBUFFSIZE		(cxMaxBuffer * cyMaxBuffer)
+
+UINT_PTR CALLBACK Lpcfhookproc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
+{
+	switch ( message )
+	{
+	case WM_COMMAND:
+	{
+		int wmId = LOWORD( wParam );
+		if (wmId == 0x402 )	// apply
+		{
+			LOGFONT logFont;
+			SendMessage( hDlg, WM_CHOOSEFONT_GETLOGFONT, 0, ( LPARAM ) &logFont );
+			SendMessage( hWndTransparent, WM_SETFONT,
+				( WPARAM ) CreateFontIndirect( &logFont ), 0 );
+			InvalidateRect( hWndTransparent, NULL, TRUE );
+			return TRUE;
+		}
+		break;
+	}
+	default:
+		break;
+	}
+	return FALSE;
+}
+
 LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	static BOOL bLButtonDown = FALSE;
@@ -777,12 +803,11 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		HDC hdc = GetDC( hWnd );
 		hdcMem = CreateCompatibleDC( hdc );
 		HBITMAP hBitmap = CreateCompatibleBitmap( hdc, GetSystemMetrics( SM_CXSCREEN ),
-											  GetSystemMetrics( SM_CYSCREEN ) );
-		
+												  GetSystemMetrics( SM_CYSCREEN ) );
+
 		SelectObject( hdcMem, hBitmap );
-		
-		hFont = CreateFont( 0, 0, 0, 0, 0, 0, 0, 0, 
-							dwCharSet, 0, 0, 0, FIXED_PITCH, NULL );
+
+		hFont = (HFONT)GetStockObject( SYSTEM_FIXED_FONT );
 		SelectObject( hdc, hFont );
 		SelectObject( hdcMem, hFont );
 
@@ -811,15 +836,52 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 			AppendMenu( hMenu, MF_STRING, IDM_TRANS_DEL, TEXT( "Delete" ) );
 			AppendMenu( hMenu, MF_STRING, IDM_TRANS_SELALL, TEXT( "Select All" ) );
 			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
-			AppendMenu( hMenu, MF_STRING, IDM_TRANS_FONT, TEXT("Font") );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_FONT, TEXT( "Font" ) );
 			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
 			AppendMenu( hMenu, MF_STRING, IDM_TRANS_FINDREPLACE, TEXT( "Find or Replace" ) );
 			AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
 			AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo" ) );
+			AppendMenu( hMenu, MF_STRING, IDM_TRANS_REDO, TEXT( "Redo" ) );
 
 			SetMenu( hWnd, hMenu );
 		}
 
+		break;
+	}
+	case WM_SETFONT:
+	{
+		LOGFONT logFont;
+		GetObject( ( HFONT ) wParam, sizeof LOGFONT, &logFont );
+		hFont = CreateFontIndirect( &logFont );
+		HDC hdc = GetDC( hWnd );
+		GetTextMetrics( hdc, &tm );
+		SIZE iSize;
+		GetTextExtentPoint( hdc, pBuffer, cxBuffer, &iSize );
+
+		RECT rcWindow;
+		int cxClient = iSize.cx;
+		int cyClient = iSize.cy;
+
+		HWND hwndParent = GetParent( hWnd );
+		GetWindowRect( hWnd, &rcWindow );
+		ScreenToClient( hwndParent, (LPPOINT)&rcWindow );
+		ScreenToClient( hwndParent, ((LPPOINT)&rcWindow)+1 );
+		MoveWindow( hWnd, rcWindow.left, rcWindow.top,
+					cxClient + GetSystemMetrics(SM_CXBORDER) * 2, 
+					cyClient + GetSystemMetrics(SM_CYCAPTION), TRUE );
+		ReleaseDC( hWnd, hdc );
+		return 0;
+	}
+	case WM_SIZE:
+	{
+		cxBuffer = max( 1, ( short ) LOWORD( lParam ) / cxChar );
+		cyBuffer = max( 1, ( short ) HIWORD( lParam ) / cyChar );
+
+		if ( hWnd == GetFocus( ) )
+			SetCaretPos( CARET_X( iChar ) * cxChar,
+						 CARET_Y( iChar ) * cyChar );
+
+		InvalidateRect( hWnd, NULL, TRUE );
 		break;
 	}
 	case WM_CONTEXTMENU:
@@ -841,27 +903,35 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		case IDM_TRANS_PASTE:
 		case IDM_TRANS_DEL:
 		case IDM_TRANS_SELALL:
+			break;
 		case IDM_TRANS_FONT:
+		{
+			CHOOSEFONT cf;
+			LOGFONT logFont;
+			GetObject( hFont, sizeof( LOGFONT ), &logFont );
+			ZeroMemory( &cf, sizeof CHOOSEFONT );
+			cf.lStructSize = sizeof CHOOSEFONT;
+			cf.hwndOwner = hWnd;
+			cf.lpLogFont = &logFont;
+			cf.Flags = CF_EFFECTS | CF_APPLY |
+				CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS | CF_ENABLEHOOK;
+			cf.lpfnHook = Lpcfhookproc;
+			
+			if ( ChooseFont( &cf ) )
+			{
+				SendMessage( hWnd, WM_SETFONT, (WPARAM)CreateFontIndirect(&logFont), 0 );
+			}
+			return 0;
+		}
 		case IDM_TRANS_FINDREPLACE:
 		case IDM_TRANS_UNDO:
-			MsgBox( MSGBOX_UNFINISHED, hWnd );
+		case IDM_TRANS_REDO:
 			break;
 		default:
+			MsgBox( MSGBOX_UNFINISHED, hWnd );
 			break;
 		}
 		return 0;
-	}
-	case WM_SIZE:
-	{
-		cxBuffer = max( 1, ( short ) LOWORD( lParam ) / cxChar );
-		cyBuffer = max( 1, ( short ) HIWORD( lParam ) / cyChar );
-
-		if ( hWnd == GetFocus( ) )
-			SetCaretPos( CARET_X(iChar) * cxChar, 
-						 CARET_Y(iChar) * cyChar );
-
-		InvalidateRect( hWnd, NULL, TRUE );
-		break;
 	}
 	case WM_LBUTTONDOWN:
 	{
@@ -1014,7 +1084,7 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 	{
 		HideCaret( hWnd );
 		DestroyCaret( );
-		SendMessage( hWnd, WM_CLOSE, 0, 0 );
+		//SendMessage( hWnd, WM_CLOSE, 0, 0 );
 		return 0;
 	}
 	case WM_PAINT:
