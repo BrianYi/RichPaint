@@ -9,7 +9,7 @@ There're a lot to do...
 ![avatar](./Screenshot/2020013114584460.gif)
 
 # TODO
-- [ x ] Add text frame, user can type text into the text frame
+- [x] Add text frame, user can type text into the text frame
 - [ ] Screen clip
 - [ ] Scamble
 - [ ] insert picture(mainly about bitmap) into canvas, save canvas as bitmap

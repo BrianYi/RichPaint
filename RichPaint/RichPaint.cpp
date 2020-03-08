@@ -66,6 +66,51 @@ void DealWithText( HDC hdc, HDC hdcMem,
 
 }
 
+extern OPENFILENAME ofn;
+extern TCHAR szFilter[ ];
+extern TCHAR szFileTitle[ MAX_PATH ];
+extern TCHAR szFileName[ MAX_PATH ];
+void DealInitializeCommonDlg(HWND hWnd )
+{
+	ZeroMemory( szFileTitle, MAX_PATH * sizeof TCHAR );
+	ZeroMemory( szFileName, MAX_PATH * sizeof TCHAR );
+	ZeroMemory( &ofn, sizeof OPENFILENAME );
+	ofn.lStructSize = sizeof OPENFILENAME;
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFilter = szFilter;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.nMaxFileTitle = MAX_PATH;
+	ofn.lpstrDefExt = TEXT( "bmp" );
+	ofn.lpstrFileTitle = szFileTitle;
+	ofn.lpstrFile = szFileName;
+	ofn.Flags = OFN_HIDEREADONLY | OFN_CREATEPROMPT;
+}
+
+void DealClearUndoStack( std::vector<HDC>& hdcMemUndoStack )
+{
+	while ( hdcMemUndoStack.size( ) > 1 )
+	{
+		DeleteDC( hdcMemUndoStack.back( ) );
+		hdcMemUndoStack.pop_back( );
+	}
+}
+
+void DealClearRedoStack( std::vector<HDC>& hdcMemRedoStack )
+{
+	while ( !hdcMemRedoStack.empty( ) )
+	{
+		DeleteDC( hdcMemRedoStack.back( ) );
+		hdcMemRedoStack.pop_back( );
+	}
+}
+
+void DealClearUndoRedoStack( std::vector<HDC>& hdcMemUndoStack, 
+							 std::vector<HDC>& hdcMemRedoStack )
+{
+	DealClearUndoStack( hdcMemUndoStack );
+	DealClearRedoStack( hdcMemRedoStack );
+}
+
 HPEN CreateEraser( )
 {
 	LOGBRUSH lgbrsh;
@@ -123,6 +168,126 @@ HDC CopyHdcBitmapMem( HDC hdcMemSrc )
 	BitBlt( hdcMemDst, 0, 0, cx, cy,
 			hdcMemSrc, 0, 0, SRCCOPY );
 	return hdcMemDst;
+}
+
+HBITMAP CreateDIBSectionFromDIBFile( const TCHAR* pszFileName )
+{
+	HANDLE hFile = CreateFile( pszFileName, GENERIC_READ, FILE_SHARE_READ,
+							   NULL, OPEN_EXISTING, 0, NULL );
+	if ( hFile == INVALID_HANDLE_VALUE )
+		return NULL;
+
+	BITMAPFILEHEADER bmfh;
+	BITMAPINFO *pbmi;
+	DWORD dwBytesRead, dwInfoSize;
+
+	BOOL bSuccess = ReadFile( hFile, &bmfh, sizeof BITMAPFILEHEADER, &dwBytesRead, NULL );
+	if ( !bSuccess || dwBytesRead != sizeof BITMAPFILEHEADER ||
+		 bmfh.bfType != *( WORD* )"BM" )
+	{
+		CloseHandle( hFile );
+		return NULL;
+	}
+
+	dwInfoSize = bmfh.bfOffBits - sizeof BITMAPFILEHEADER;
+
+	pbmi = ( BITMAPINFO * ) malloc( dwInfoSize );
+	bSuccess = ReadFile( hFile, pbmi, dwInfoSize, &dwBytesRead, NULL );
+	if ( !bSuccess || dwBytesRead != dwInfoSize )
+	{
+		DWORD dwError = GetLastError( );
+
+		free( pbmi );
+		CloseHandle( hFile );
+		return NULL;
+	}
+
+	BYTE *pBits;
+	HBITMAP hBitmap = CreateDIBSection( NULL, pbmi, DIB_RGB_COLORS,
+										(void **)&pBits, NULL, 0 );
+	if ( hBitmap == NULL )
+	{
+		free( pbmi );
+		CloseHandle( hFile );
+		return NULL;
+	}
+
+	ReadFile( hFile, pBits, bmfh.bfSize - bmfh.bfOffBits, &dwBytesRead, NULL );
+
+	free( pbmi );
+	CloseHandle( hFile );
+
+	return hBitmap;
+}
+
+BOOL SaveDIBtoFile( HDC hdc, HBITMAP hBitmap, const TCHAR* pszFileName )
+{
+	//============================================================================
+	//
+	// build a DIB file structure(BITMAPFILEHEADER + BITMAPINFO + Color BITS)
+	// packed DIB is BITMAPINFO + Color BITS
+	BITMAP bm;
+	GetObject( hBitmap, sizeof BITMAP, &bm );
+
+	BITMAPINFO bmi;
+	ZeroMemory( &bmi, sizeof BITMAPINFO );
+	BITMAPINFOHEADER &bmih = bmi.bmiHeader;
+	bmih.biSize = sizeof BITMAPINFOHEADER;
+	bmih.biBitCount = 32;
+	bmih.biCompression = BI_RGB;
+	bmih.biWidth = bm.bmWidth;
+	bmih.biHeight = bm.bmHeight;
+	bmih.biPlanes = 1;
+	
+	DWORD dwBitsBytes = ( bm.bmWidth * bm.bmBitsPixel + 31 ) / 32 * 4 * bm.bmHeight;
+	BYTE *pBytes = ( BYTE * ) malloc( dwBitsBytes * sizeof BYTE );
+	GetDIBits( hdc, hBitmap,
+			   0, bm.bmHeight,
+			   pBytes,
+			   &bmi, DIB_RGB_COLORS );
+
+	BITMAPFILEHEADER bmfh;
+	ZeroMemory( &bmfh, sizeof BITMAPFILEHEADER );
+	bmfh.bfOffBits = sizeof BITMAPFILEHEADER + sizeof BITMAPINFO;
+	bmfh.bfType = *( WORD * )"BM";
+	bmfh.bfSize = bmfh.bfOffBits + dwBitsBytes;
+	
+
+	//============================================================================
+	//
+	// write to file
+	//
+	HANDLE hFile = CreateFile( szFileName, GENERIC_WRITE, 0, NULL,
+							   CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+	if ( hFile == INVALID_HANDLE_VALUE )
+		return FALSE;
+
+	DWORD dwBytesWritten;
+	DWORD dwBytesOfDIBFile = 0;
+	
+	BOOL bSuccess = WriteFile( hFile, &bmfh, sizeof BITMAPFILEHEADER, &dwBytesWritten, NULL );
+	dwBytesOfDIBFile += dwBytesWritten;
+	if ( !bSuccess ) goto fail;
+
+	bSuccess = WriteFile( hFile, &bmi, sizeof BITMAPINFO, &dwBytesWritten, NULL );
+	dwBytesOfDIBFile += dwBytesWritten;
+	if ( !bSuccess ) goto fail;
+	
+	bSuccess = WriteFile( hFile, pBytes, dwBitsBytes, &dwBytesWritten, NULL );
+	dwBytesOfDIBFile += dwBytesWritten;
+	if ( !bSuccess || dwBytesOfDIBFile != bmfh.bfSize) goto fail;
+
+fail:
+	if (!bSuccess )
+	{
+		CloseHandle( hFile );
+		free( pBytes );
+		return FALSE;
+	}
+
+	CloseHandle( hFile );
+	free( pBytes );
+	return TRUE;
 }
 
 HDC MenuEditUndo( std::vector<HDC>& hdcMemUndoStack, std::vector<HDC>& hdcMemRedoStack )
@@ -188,6 +353,12 @@ void MsgBox( int type, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *
 		_MsgBox( IDS_MSGBOX_UNFINISHED_TITLE, szCaption, szTitle );
 		_MsgBox( IDS_MSGBOX_UNFINISHED_TEXT, szContent, szText );
 		MessageBox( hWnd, szContent, szCaption, MB_ICONINFORMATION );
+		break;
+	case MSGBOX_FILE_SAVE_SUCCESS:
+		MessageBox( hWnd, szText, szTitle, MB_ICONINFORMATION );
+		break;
+	case MSGBOX_FILE_SAVE_FAILED:
+		MessageBox( hWnd, szText, szTitle, MB_ICONWARNING );
 		break;
 	default:
 		break;

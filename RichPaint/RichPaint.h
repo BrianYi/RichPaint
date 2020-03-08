@@ -40,6 +40,10 @@ void DealWithBrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, H
 void DealWithAirbrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
 void DealWithEraser( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
 void DealWithText( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
+void DealInitializeCommonDlg( HWND hWnd );
+void DealClearUndoStack( std::vector<HDC>& hdcMemUndoStack );
+void DealClearRedoStack( std::vector<HDC>& hdcMemRedoStack );
+void DealClearUndoRedoStack( std::vector<HDC>& hdcMemUndoStack, std::vector<HDC>& hdcMemRedoStack );
 
 //============================================================================
 //
@@ -49,6 +53,8 @@ HPEN CreateEraser( );
 HPEN CreateAirbrush( );
 HBITMAP CopyBitmap( HBITMAP hBitmapSrc );
 HDC CopyHdcBitmapMem( HDC hdcMemSrc );
+HBITMAP CreateDIBSectionFromDIBFile( const TCHAR* pszFileName );
+BOOL SaveDIBtoFile( HDC hdc, HBITMAP hBitmap, const TCHAR* pszFileName );
 
 
 //============================================================================
@@ -73,6 +79,7 @@ void DebugShowPosition( HDC hdc, HDC hdcMem, int x, int y, POINT pt );
 enum
 {
 	MSGBOX_UNFINISHED,
-
+	MSGBOX_FILE_SAVE_SUCCESS,
+	MSGBOX_FILE_SAVE_FAILED,
 };
 void MsgBox( int type, HWND hWnd, const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );

@@ -50,6 +50,11 @@ HDC hdcMemCanvas;
 HBITMAP hBitmapCanvas;
 HPEN g_hPen;
 
+OPENFILENAME ofn;
+TCHAR szFilter[ ] = TEXT( "Bitmap Files (*.bmp)\0*.bmp\0\0" );
+TCHAR szFileTitle[ MAX_PATH ];
+TCHAR szFileName[ MAX_PATH ];
+
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -224,6 +229,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 
 LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
+	// Initialize common dlg
+	DealInitializeCommonDlg( hWnd );
+
 	DWORD dwColor, dwId;
 	DWORD i, x, y, z;
 	for ( i = 0; i < cColor; ++i )
@@ -416,8 +424,8 @@ LRESULT OnMouseMove( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	POINT ptMouseEnd = pt;
 	ptMouse = pt;
 	HDC hdc;
-	
-#ifdef _DEBUG
+
+#ifdef DEBUG
 	hdc = GetDC( hWnd );
 	DebugShowPosition( hdc, hdcMemCanvas, 0, 0, pt );
 	ReleaseDC( hWnd, hdc );
@@ -553,7 +561,7 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	int wmId = LOWORD( wParam );
 	HMENU hMenu = GetMenu( hWnd );
 	// Parse the menu selections:
-	
+
 	if ( IS_COLORID( wmId ) ) // color select
 	{
 		SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, 
@@ -591,21 +599,63 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		return 0;
 	case IDM_FILE_NEW:
 		DeleteDC( hdcMemCanvas );
-		while (hdcMemCanvasUndoStack.size()>1)
-		{
-			DeleteDC( hdcMemCanvasUndoStack.back( ) );
-			hdcMemCanvasUndoStack.pop_back( );
-		}
+		DealClearUndoRedoStack( hdcMemCanvasUndoStack, hdcMemCanvasRedoStack );
 		hdcMemCanvas = CopyHdcBitmapMem( hdcMemCanvasUndoStack.back( ) );
-		while ( !hdcMemCanvasRedoStack.empty( ) )
-		{
-			DeleteDC( hdcMemCanvasRedoStack.back( ) );
-			hdcMemCanvasRedoStack.pop_back( );
-		}
 		InvalidateRect( hWnd, NULL, FALSE );
 		return 0;
 	case IDM_FILE_OPEN:
+	{
+		if ( GetOpenFileName( &ofn ) )
+		{
+			HBITMAP hBitmap = CreateDIBSectionFromDIBFile( szFileName );
+			
+			if ( hBitmap != NULL )
+			{
+				HDC hdcMem = CreateCompatibleDC( NULL );
+				BITMAP bm;
+				SelectObject( hdcMem, hBitmap );
+				GetObject( hBitmap, sizeof BITMAP, (LPVOID)&bm );
+				BitBlt( hdcMemCanvas, canvasRect.left, canvasRect.top,
+						bm.bmWidth, bm.bmHeight,
+						hdcMem, 0, 0, SRCCOPY );
+
+				DealClearUndoRedoStack( hdcMemCanvasUndoStack, hdcMemCanvasRedoStack );
+				
+				InvalidateRect( hWnd, NULL, FALSE );
+				DeleteDC( hdcMem );
+			}
+		}
+		return 0;
+	}
 	case IDM_FILE_SAVE:
+	{
+		if ( GetSaveFileName( &ofn ) )
+		{
+			TCHAR szBuffer[ MAX_PATH ];
+			int cx = canvasRect.right - canvasRect.left;
+			int cy = canvasRect.bottom - canvasRect.top;
+			HDC hdc = GetDC( hWnd );
+			HDC hdcMem = CreateCompatibleDC( hdc );
+			HBITMAP hBitmap = CreateCompatibleBitmap( hdc, cx, cy );
+			SelectObject( hdcMem, hBitmap );
+			BitBlt( hdcMem, 0, 0, cx, cy,
+					hdcMemCanvas, canvasRect.left, canvasRect.top, SRCCOPY );
+			if ( SaveDIBtoFile( hdcMem, hBitmap, ofn.lpstrFile ) )
+			{
+				wsprintf( szBuffer, TEXT( "File %s saved successfully." ), ofn.lpstrFileTitle );
+				MsgBox( MSGBOX_FILE_SAVE_SUCCESS, hWnd, TEXT( "Save File" ), szBuffer );
+			}
+			else
+			{
+				wsprintf( szBuffer, TEXT( "Unable save the file %s." ), ofn.lpstrFileTitle );
+				MsgBox( MSGBOX_FILE_SAVE_FAILED, hWnd, TEXT( "Save File" ), szBuffer );
+			}
+			
+			DeleteDC( hdcMem );
+			ReleaseDC( hWnd, hdc );
+		}
+		return 0;
+	}
 	case IDM_FILE_SAVEAS:
 	case IDM_FILE_PRINT:
 		MsgBox( MSGBOX_UNFINISHED, hWnd );
@@ -1001,6 +1051,11 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 			InvalidateRect( hWnd, NULL, TRUE );
 			break;
 		}
+		case VK_ESCAPE:
+		{
+			SendMessage( hWnd, WM_CLOSE, 0, 0 );
+			break;
+		}
 		default:
 			break;
 		}
@@ -1120,6 +1175,9 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 	}
 	case WM_DESTROY:
 	{
+		HideCaret( hWnd );
+		DestroyCaret( );
+
 		RECT rcClient;
 		GetClientRect( hWnd, &rcClient );
 		int cx = rcClient.right - rcClient.left;
