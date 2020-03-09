@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "RichPaint.h"
+#include <windowsx.h>
 
 Tool tools[ ] =
 {
@@ -38,6 +39,7 @@ HWND hWndEditColor;
 HWND hWndCurColor;
 HWND hWndUndo, hWndRedo;
 HWND hWndTransparent;
+HWND hWndAnim;
 
 DWORD dwCurToolIdx = 0;
 DWORD cColor = cBasicColor * cBasicColor * cBasicColor;
@@ -62,12 +64,6 @@ WCHAR szTitle[ MAX_LOADSTRING ];                  // The title bar text
 WCHAR szWindowClass[ MAX_LOADSTRING ];            // the main window class name
 WCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
 
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass( HINSTANCE hInstance );
-BOOL                InitInstance( HINSTANCE, int );
-LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
-INT_PTR CALLBACK    About( HWND, UINT, WPARAM, LPARAM );
-LRESULT CALLBACK    TransparentWndProc( HWND, UINT, WPARAM, LPARAM );
 
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
 					   _In_opt_ HINSTANCE hPrevInstance,
@@ -185,52 +181,26 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 {
 	switch ( message )
 	{
-	case WM_CREATE:
-	{
-		return OnCreate( hWnd, message, wParam, lParam );
-	}
-	case WM_LBUTTONDOWN:
-	{
-		return OnLButtonDown( hWnd, message, wParam, lParam );
-	}
-	case WM_LBUTTONUP:
-	{
-		return OnLButtonUp( hWnd, message, wParam, lParam );
-	}
-	case WM_MOUSEMOVE:
-	{
-		return OnMouseMove( hWnd, message, wParam, lParam );
-	}
-	case WM_SIZE:
-	{
-		return OnSize( hWnd, message, wParam, lParam );
-	}
-	case WM_COMMAND:
-	{
-		return OnCommand( hWnd, message, wParam, lParam );
-	}
-	case WM_PAINT:
-	{
-		return OnPaint( hWnd, message, wParam, lParam );
-	}
-	case WM_DRAWITEM:
-	{
-		return OnDrawItem( hWnd, message, wParam, lParam );
-	}
-	case WM_DESTROY:
-	{
-		return OnDestroy( hWnd, message, wParam, lParam );
-	}
-	default:
-		return DefWindowProc( hWnd, message, wParam, lParam );
+		HANDLE_MSG( hWnd, WM_CREATE, OnCreate );
+		HANDLE_MSG( hWnd, WM_LBUTTONDOWN, OnLButtonDown );
+		HANDLE_MSG( hWnd, WM_LBUTTONUP, OnLButtonUp );
+		HANDLE_MSG( hWnd, WM_MOUSEMOVE, OnMouseMove );
+		HANDLE_MSG( hWnd, WM_SIZE, OnSize );
+		HANDLE_MSG( hWnd, WM_COMMAND, OnCommand );
+		HANDLE_MSG( hWnd, WM_PAINT, OnPaint );
+		HANDLE_MSG( hWnd, WM_DRAWITEM, OnDrawItem );
+		HANDLE_MSG( hWnd, WM_DESTROY, OnDestroy );
+
+ 	default:
+ 		return DefWindowProc( hWnd, message, wParam, lParam );
 	}
 	return 0;
 }
 
-LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct )
 {
 	// Initialize common dlg
-	DealInitializeCommonDlg( hWnd );
+	DealInitCommonDlg( hWnd );
 
 	DWORD dwColor, dwId;
 	DWORD i, x, y, z;
@@ -304,18 +274,19 @@ LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	hdcMemCanvas = CopyHdcBitmapMem( hdcMemCanvas );
 	ReleaseDC( hWnd, hdc );
 
-	return DefWindowProc( hWnd, message, wParam, lParam );
+	return TRUE;
 }
 
-LRESULT OnLButtonDown( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags )
 {
 	POINT pt;
-	pt.x = ( short ) LOWORD( lParam );
-	pt.y = ( short ) HIWORD( lParam );
+	pt.x = x;
+	pt.y = y;
 	
 	SetFocus( hWnd );
 
-	if ( !PtInRect( &canvasRect, pt ) ) return 0;
+	if ( !PtInRect( &canvasRect, pt ) ) 
+		return TRUE;
 
 	HDC hdc = GetDC( hWnd );
 	DWORD dwCurColor = GetWindowLongPtr( hWndCurColor, GWLP_USERDATA );
@@ -387,10 +358,10 @@ LRESULT OnLButtonDown( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	bLButtonDown = TRUE;
 	ptMouse = pt;
 	SetCapture( hWnd );	// 忘记具体用途了
-	return 0;
+	return TRUE;
 }
 
-LRESULT OnLButtonUp( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnLButtonUp( HWND hWnd, int x, int y, UINT keyFlags )
 {
 	if ( bLButtonDown )
 	{
@@ -411,14 +382,14 @@ LRESULT OnLButtonUp( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		}
 	}
 	ReleaseCapture( );
-	return 0;
+	return TRUE;
 }
 
-LRESULT OnMouseMove( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnMouseMove( HWND hWnd, int x, int y, UINT keyFlags )
 {
 	POINT pt;
-	pt.x = ( short ) LOWORD( lParam );
-	pt.y = ( short ) HIWORD( lParam );
+	pt.x = x;
+	pt.y = y;
 
 	POINT ptMouseStart = ptMouse;
 	POINT ptMouseEnd = pt;
@@ -469,14 +440,14 @@ LRESULT OnMouseMove( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		break;
 	}
 	ReleaseDC( hWnd, hdc );
-	return 0;
+	return TRUE;
 }
 
-LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnSize( HWND hWnd, UINT state, int cx, int cy )
 {
 	DWORD i, x, y;
-	int cxClient = LOWORD( lParam );
-	int cyClient = HIWORD( lParam );
+	int cxClient = cx;
+	int cyClient = cy;
 
 	//============================================================================
 	//
@@ -553,19 +524,19 @@ LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	canvasRect.right = cxClient - 10;
 	canvasRect.top = 10;
 	canvasRect.bottom = cyClient - 10;
-	return 0;
+	return TRUE;
 }
 
-LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 {
-	int wmId = LOWORD( wParam );
+	int wmId = id;
 	HMENU hMenu = GetMenu( hWnd );
 	// Parse the menu selections:
 
 	if ( IS_COLORID( wmId ) ) // color select
 	{
 		SetWindowLongPtr( hWndCurColor, GWLP_USERDATA, 
-						  GetWindowLongPtr( ( HWND ) lParam, GWLP_USERDATA ) );
+						  GetWindowLongPtr( hwndCtl, GWLP_USERDATA ) );
 		InvalidateRect( hWndCurColor, NULL, TRUE );
 	}
 	else if ( IS_TOOLID( wmId ) )
@@ -573,6 +544,23 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		// set the cursor
 		dwCurToolIdx = INDEX_TOOL( wmId );
 		SET_GLOBAL_CURSOR( tools[ dwCurToolIdx ].hCursor );
+		switch ( wmId )
+		{
+		case ID_PASTE:
+		{
+			int ret = DialogBox( hInst, MAKEINTRESOURCE( IDD_DLGANIM ), hWnd,
+					   AnimationDlgProc );
+			if ( ret == IDOK ||
+				 ret == IDCANCEL )
+			{
+				// TODO...
+				break;
+			}
+			break;
+		}
+		default:
+			break;
+		}
 	}
 	else if ( wmId == ID_EDITCOLOR )
 	{
@@ -596,13 +584,13 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	case ID_REDO:
 		SendMessage( hWnd, WM_COMMAND, 
 					 wmId == ID_UNDO? IDM_EDIT_UNDO: IDM_EDIT_REDO, 0 );
-		return 0;
+		return TRUE;
 	case IDM_FILE_NEW:
 		DeleteDC( hdcMemCanvas );
 		DealClearUndoRedoStack( hdcMemCanvasUndoStack, hdcMemCanvasRedoStack );
 		hdcMemCanvas = CopyHdcBitmapMem( hdcMemCanvasUndoStack.back( ) );
 		InvalidateRect( hWnd, NULL, FALSE );
-		return 0;
+		return TRUE;
 	case IDM_FILE_OPEN:
 	{
 		if ( GetOpenFileName( &ofn ) )
@@ -625,7 +613,7 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 				DeleteDC( hdcMem );
 			}
 		}
-		return 0;
+		return TRUE;
 	}
 	case IDM_FILE_SAVE:
 	{
@@ -654,7 +642,7 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 			DeleteDC( hdcMem );
 			ReleaseDC( hWnd, hdc );
 		}
-		return 0;
+		return TRUE;
 	}
 	case IDM_FILE_SAVEAS:
 	case IDM_FILE_PRINT:
@@ -679,12 +667,12 @@ LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		DialogBox( hInst, MAKEINTRESOURCE( IDD_ABOUTBOX ), hWnd, About );
 		break;
 	default:
-		return DefWindowProc( hWnd, message, wParam, lParam );
+		return TRUE;
 	}
-	return DefWindowProc( hWnd, message, wParam, lParam );
+	return TRUE;
 }
 
-LRESULT OnPaint( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnPaint( HWND hWnd )
 {
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint( hWnd, &ps );
@@ -695,12 +683,12 @@ LRESULT OnPaint( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 			hdcMemCanvas, canvasRect.left, canvasRect.top, SRCCOPY );
 	EndPaint( hWnd, &ps );
 	ReleaseDC( hWnd, hdc );
-	return DefWindowProc( hWnd, message, wParam, lParam );
+	return TRUE;
 }
 
-LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnDrawItem( HWND hWnd, const DRAWITEMSTRUCT * lpDrawItem )
 {
-	LPDRAWITEMSTRUCT pDIS = ( LPDRAWITEMSTRUCT ) lParam;
+	const DRAWITEMSTRUCT *pDIS = lpDrawItem;
 
 	int cx = pDIS->rcItem.right - pDIS->rcItem.left;
 	int cy = pDIS->rcItem.bottom - pDIS->rcItem.top;
@@ -750,13 +738,13 @@ LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 		break;
 	}
 
-	return 0;
+	return TRUE;
 }
 
-LRESULT OnDestroy( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+BOOL OnDestroy( HWND hwnd )
 {
 	PostQuitMessage( 0 );
-	return DefWindowProc( hWnd, message, wParam, lParam );
+	return TRUE;
 }
 
 // Message handler for about box.
@@ -779,6 +767,19 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 	return ( INT_PTR ) FALSE;
 }
 
+
+INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+{
+	switch ( message )
+	{
+		HANDLE_MSG( hWnd, WM_INITDIALOG, DlgOnInitAnimation );
+		HANDLE_MSG( hWnd, WM_COMMAND, DlgOnCommand );
+		HANDLE_MSG( hWnd, WM_CLOSE, DlgOnClose );
+	default:
+		break;
+	}
+	return FALSE;
+}
 
 #define WM_LINECHANGE	(WM_USER+1)
 #define CARET_X(iChar)	(iChar % cxBuffer)

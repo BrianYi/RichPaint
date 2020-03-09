@@ -1,5 +1,5 @@
 echo "====== Push begin... ======"
-read -p "Notes: " note
+read -ep "Notes: " note
 git add -A 
 git commit -m "${note}"
 git push origin master

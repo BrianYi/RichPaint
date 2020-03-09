@@ -4,13 +4,14 @@
 //
 #define IDD_RICHPAINT_DIALOG            102
 #define IDS_APP_TITLE                   103
-#define IDS_MSGBOX_UNFINISHED_TITLE		104
-#define IDS_MSGBOX_UNFINISHED_TEXT		105
-
 #define IDD_ABOUTBOX                    103
+#define IDS_MSGBOX_UNFINISHED_TITLE     104
+#define IDS_MSGBOX_UNFINISHED_TEXT      105
 #define IDC_RICHPAINT                   109
 #define IDR_MAINFRAME                   128
 #define IDI_RICHPAINT                   129
+#define IDD_DIALOG1                     130
+#define IDD_DLGANIM                     130
 #define IDC_PENCIL                      200
 #define IDC_BRUSH                       201
 #define IDC_AIRBRUSH                    202
@@ -49,8 +50,9 @@
 #define IDB_OVAL                        317
 #define IDB_AIRBRUSH_EFFECT             400
 #define IDB_EDITCOLOR                   500
-#define IDB_UNDO						501
-#define IDB_REDO						502
+#define IDB_UNDO                        501
+#define IDB_REDO                        502
+#define IDR_UPLOAD_AVI                  600
 #define IDM_FILE_NEW                    32776
 #define IDM_FILE_OPEN                   32777
 #define IDM_FILE_SAVE                   32778
@@ -67,7 +69,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        130
+#define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           110

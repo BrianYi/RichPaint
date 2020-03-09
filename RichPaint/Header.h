@@ -38,6 +38,7 @@
 #define ID_UNDO							IDB_UNDO
 #define ID_REDO							IDB_REDO
 #define ID_TRABSPARENT_WIN				503
+#define ID_ANIMATION					504
 
 //============================================================================
 //

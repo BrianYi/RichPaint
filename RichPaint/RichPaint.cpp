@@ -4,6 +4,51 @@
 
 extern HINSTANCE hInst;
 
+BOOL DlgOnInitAnimation( HWND hWnd, HWND hWndFocus, LPARAM lParam )
+{
+	// Load and register animation control class.
+// 	INITCOMMONCONTROLSEX iccx;
+// 	iccx.dwSize = sizeof( INITCOMMONCONTROLSEX );
+// 	iccx.dwICC = ICC_ANIMATE_CLASS;
+// 	if ( !InitCommonControlsEx( &iccx ) )
+// 	{
+// 		MsgBox( MSBBOX_INIT_COMCTL32_FAILED, hWnd,
+// 				TEXT( "Initialization" ), TEXT( "Init ICC_ANIMATE_CLASS failed!" ) );
+// 	}
+
+	// Create the animation control
+	RECT rc = { 20,20,280,60 };
+	HWND hAnimate = Animate_Create( hWnd, ID_ANIMATION, WS_CHILD | WS_VISIBLE |
+									ACS_AUTOPLAY | ACS_TIMER | ACS_TRANSPARENT, hInst );
+	SetWindowPos( hAnimate, 0, rc.left, rc.top,
+				  rc.right, rc.bottom,
+				  SWP_NOZORDER | SWP_DRAWFRAME );
+
+	Animate_Open( hAnimate, MAKEINTRESOURCE( IDR_UPLOAD_AVI ) );
+
+	return TRUE;
+}
+
+BOOL DlgOnCommand( HWND hwnd, int id, HWND hwndCtl, UINT codeNotify )
+{
+	switch ( id )
+	{
+	case IDOK:
+	case IDCANCEL:
+		EndDialog( hwnd, id );
+		break;
+	default:
+		break;
+	}
+	return TRUE;
+}
+
+BOOL DlgOnClose( HWND hWnd )
+{
+	EndDialog( hWnd, 0 );
+	return TRUE;
+}
+
 void DealWithPencil( HDC hdc, HDC hdcMem, 
 					 POINT ptMouseStart, POINT ptMouseEnd,
 					 HPEN hPen)
@@ -70,8 +115,9 @@ extern OPENFILENAME ofn;
 extern TCHAR szFilter[ ];
 extern TCHAR szFileTitle[ MAX_PATH ];
 extern TCHAR szFileName[ MAX_PATH ];
-void DealInitializeCommonDlg(HWND hWnd )
+void DealInitCommonDlg(HWND hWnd )
 {
+	// OPENFILENAME
 	ZeroMemory( szFileTitle, MAX_PATH * sizeof TCHAR );
 	ZeroMemory( szFileName, MAX_PATH * sizeof TCHAR );
 	ZeroMemory( &ofn, sizeof OPENFILENAME );
@@ -226,6 +272,7 @@ BOOL SaveDIBtoFile( HDC hdc, HBITMAP hBitmap, const TCHAR* pszFileName )
 	//
 	// build a DIB file structure(BITMAPFILEHEADER + BITMAPINFO + Color BITS)
 	// packed DIB is BITMAPINFO + Color BITS
+	// 
 	BITMAP bm;
 	GetObject( hBitmap, sizeof BITMAP, &bm );
 
@@ -328,7 +375,6 @@ HDC MenuEditRedo( std::vector<HDC>& hdcMemRedoStack, std::vector<HDC>& hdcMemUnd
 void DebugShowPosition( HDC hdc, HDC hdcMem, int x, int y, POINT pt )
 {
 	TCHAR szBuffer[ 128 ];
-
 	wsprintf( szBuffer, TEXT( "(%-4d, %-4d)" ), pt.x, pt.y );
 	TextOut( hdc, x, y, szBuffer, lstrlen( szBuffer ) );
 	TextOut( hdcMem, x, y, szBuffer, lstrlen( szBuffer ) );
@@ -359,6 +405,9 @@ void MsgBox( int type, HWND hWnd, const TCHAR *szTitle/* = NULL*/, const TCHAR *
 		break;
 	case MSGBOX_FILE_SAVE_FAILED:
 		MessageBox( hWnd, szText, szTitle, MB_ICONWARNING );
+		break;
+	case MSBBOX_INIT_COMCTL32_FAILED:
+		MessageBox( hWnd, szText, szTitle, MB_ICONERROR );
 		break;
 	default:
 		break;

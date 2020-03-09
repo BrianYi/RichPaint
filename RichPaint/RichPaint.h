@@ -19,17 +19,43 @@ struct Tool
 
 //============================================================================
 //
+// Class related
+//
+ATOM                MyRegisterClass( HINSTANCE hInstance );
+BOOL                InitInstance( HINSTANCE, int );
+
+//============================================================================
+//
+// Wind Procedure
+//
+LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
+INT_PTR CALLBACK    About( HWND, UINT, WPARAM, LPARAM );
+LRESULT CALLBACK    TransparentWndProc( HWND, UINT, WPARAM, LPARAM );
+INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+
+//============================================================================
+//
 // WM_*,Window messages
 //
-LRESULT OnCreate( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnLButtonDown( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnLButtonUp( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnMouseMove( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnSize( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnCommand( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnPaint( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnDrawItem( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
-LRESULT OnDestroy( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+BOOL OnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct );
+BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags );
+BOOL OnLButtonUp( HWND hWnd, int x, int y, UINT keyFlags );
+BOOL OnMouseMove( HWND hWnd, int x, int y, UINT keyFlags );
+BOOL OnSize( HWND hWnd, UINT state, int cx, int cy );
+BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify );
+BOOL OnPaint( HWND hWnd );
+BOOL OnDrawItem( HWND hWnd, const DRAWITEMSTRUCT * lpDrawItem );
+BOOL OnDestroy( HWND hwnd );
+
+
+//============================================================================
+//
+// Dialog
+//
+BOOL DlgOnInitAnimation( HWND hWnd, HWND hWndFocus, LPARAM lParam );
+BOOL DlgOnCommand( HWND hwnd, int id, HWND hwndCtl, UINT codeNotify );
+BOOL DlgOnClose( HWND hWnd );
 
 //============================================================================
 //
@@ -40,10 +66,11 @@ void DealWithBrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, H
 void DealWithAirbrush( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
 void DealWithEraser( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
 void DealWithText( HDC hdc, HDC hdcMem, POINT ptMouseStart, POINT ptMouseEnd, HPEN hPen );
-void DealInitializeCommonDlg( HWND hWnd );
+void DealInitCommonDlg( HWND hWnd );
 void DealClearUndoStack( std::vector<HDC>& hdcMemUndoStack );
 void DealClearRedoStack( std::vector<HDC>& hdcMemRedoStack );
 void DealClearUndoRedoStack( std::vector<HDC>& hdcMemUndoStack, std::vector<HDC>& hdcMemRedoStack );
+void DealInitAnimComCtl( HWND hWnd );
 
 //============================================================================
 //
@@ -81,5 +108,6 @@ enum
 	MSGBOX_UNFINISHED,
 	MSGBOX_FILE_SAVE_SUCCESS,
 	MSGBOX_FILE_SAVE_FAILED,
+	MSBBOX_INIT_COMCTL32_FAILED,
 };
 void MsgBox( int type, HWND hWnd, const TCHAR *szTitle = NULL, const TCHAR *szText = NULL );

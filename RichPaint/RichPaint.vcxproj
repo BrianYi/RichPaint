@@ -94,7 +94,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Dwmapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -174,9 +174,43 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icon\RichPaint.ico" />
+    <Image Include="image\BITMAP38004_1.bmp" />
+    <Image Include="image\BITMAP38008_1.bmp" />
+    <Image Include="image\BITMAP40334_1.bmp" />
+    <Image Include="image\BITMAP40354_1.bmp" />
+    <Image Include="image\BITMAP40384_1.bmp" />
+    <Image Include="image\BITMAP40704_1.bmp" />
+    <Image Include="image\BITMAP40714_1.bmp" />
+    <Image Include="image\BITMAP40734_1.bmp" />
+    <Image Include="image\BITMAP40744_1.bmp" />
+    <Image Include="image\BITMAP40754_1.bmp" />
+    <Image Include="image\BITMAP60276_1.bmp" />
+    <Image Include="image\BITMAP60288_1.bmp" />
+    <Image Include="image\BITMAP60300_1.bmp" />
+    <Image Include="image\BITMAP60324_1.bmp" />
+    <Image Include="image\BITMAP60344_1.bmp" />
+    <Image Include="image\BITMAP60348_1.bmp" />
+    <Image Include="image\BITMAP60424_1.bmp" />
+    <Image Include="image\BITMAP60432_1.bmp" />
+    <Image Include="image\BITMAP60436_1.bmp" />
+    <Image Include="image\BITMAP60484_1.bmp" />
+    <Image Include="image\BITMAP60492_1.bmp" />
+    <Image Include="image\BITMAP864_1.bmp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+    <None Include="cursor\cursor1.cur" />
+    <None Include="Cursor\Cursor154.cur" />
+    <None Include="cursor\Cursor155.cur" />
+    <None Include="Cursor\Cursor156.cur" />
+    <None Include="Cursor\Cursor157.cur" />
+    <None Include="Cursor\Cursor158.cur" />
+    <None Include="Cursor\Cursor159.cur" />
+    <None Include="Cursor\Cursor164.cur" />
+    <None Include="Cursor\Cursor169.cur" />
+    <None Include="Cursor\Cursor170.cur" />
+    <None Include="cursor\cursor2.cur" />
+    <None Include="res\upload.avi" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

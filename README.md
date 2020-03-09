@@ -12,8 +12,9 @@ There're a lot to do...
 - [x] Add text frame, user can type text into the text frame
 - [ ] Screen clip
 - [ ] Scamble
-- [ ] insert picture(mainly about bitmap) into canvas, save canvas as bitmap
-- [ ] save the entire file
+- [x] insert picture(mainly about bitmap) into canvas, save canvas as bitmap
+- [ ] draw different shapes on the canvas
+- [ ] play yuv file
 
 # BUGS
 - [ ] Text frame can move to outside of the canvas
