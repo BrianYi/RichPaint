@@ -9,11 +9,16 @@ There're a lot to do...
 ![avatar](./Screenshot/2020013114584460.gif)
 
 # TODO
+## Main Window
 - [x] Add text frame, user can type text into the text frame
 - [ ] Screen clip
-- [ ] Scamble
 - [x] insert picture(mainly about bitmap) into canvas, save canvas as bitmap
 - [ ] draw different shapes on the canvas
+## Transparent Window
+- [x] Add context menu to frame
+## Game Window
+- [ ] Scamble
+## Other utilities
 - [ ] play yuv file
 
 # BUGS

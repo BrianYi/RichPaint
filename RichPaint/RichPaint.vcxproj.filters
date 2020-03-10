@@ -120,7 +120,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
-    <None Include="res\upload.avi" />
     <None Include="Cursor\Cursor154.cur">
       <Filter>Resource Files</Filter>
     </None>

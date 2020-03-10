@@ -39,14 +39,18 @@ INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARA
 // WM_*,Window messages
 //
 BOOL OnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct );
+BOOL OnInitMenu( HWND hwnd, HMENU hMenu );
 BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags );
 BOOL OnLButtonUp( HWND hWnd, int x, int y, UINT keyFlags );
 BOOL OnMouseMove( HWND hWnd, int x, int y, UINT keyFlags );
 BOOL OnSize( HWND hWnd, UINT state, int cx, int cy );
 BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify );
+BOOL OnContextMenu( HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos );
 BOOL OnPaint( HWND hWnd );
 BOOL OnDrawItem( HWND hWnd, const DRAWITEMSTRUCT * lpDrawItem );
 BOOL OnDestroy( HWND hwnd );
+
+BOOL TransWinOnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct );
 
 
 //============================================================================
