@@ -61,6 +61,7 @@
 #define IDM_FILE_EXIT                   32781
 #define IDM_EDIT_UNDO                   32790
 #define IDM_EDIT_REDO                   32791
+#define IDM_GAME_SCRAMBLE				32800
 #define IDM_HELP_ABOUT                  32850
 #define IDC_STATIC                      -1
 

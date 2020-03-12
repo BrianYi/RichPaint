@@ -1,6 +1,7 @@
 A mimic of Paint in Win10, I wanna make it more powerful like Notepad++.
 Not only paint, but also powerful operations like typing text, insert picture, make gif, etc.
-There're a lot to do...
+
+A lot of things need to do...
 
 # screenshot
 ![avatar](./Screenshot/2020030316435857.png)
@@ -17,7 +18,7 @@ There're a lot to do...
 ## Transparent Window
 - [x] Add context menu to frame
 ## Game Window
-- [ ] Scamble
+- [x] Scamble
 ## Other utilities
 - [ ] play yuv file
 

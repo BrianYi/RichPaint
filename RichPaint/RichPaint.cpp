@@ -557,6 +557,53 @@ BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 		InvalidateRect( hWnd, NULL, FALSE );
 		break;
 
+	case IDM_GAME_SCRAMBLE:
+	{
+		srand( GetCurrentTime( ) );
+		const int NUM = 100;
+		const int iBlockNum = 10;
+		int iKeep[ NUM ][ 4 ];
+		int i, j, x1, y1, x2, y2;
+		int cx = ( canvasRect.right - canvasRect.left ) / iBlockNum;
+		int cy = ( canvasRect.bottom - canvasRect.top ) / iBlockNum;
+
+		LockWindowUpdate( hWnd );
+		HDC hdcSrc = GetDCEx( hWnd, NULL, DCX_CACHE | DCX_LOCKWINDOWUPDATE );
+		HDC hdcMem = CreateCompatibleDC( hdcSrc );
+		HBITMAP hBitmap = CreateCompatibleBitmap( hdcSrc, cx, cy );
+		SelectObject( hdcMem, hBitmap );
+
+		for ( i = 0; i < 2; ++i )
+		{
+			for ( j = 0; j < NUM; ++j)
+			{
+				if ( i == 0 )
+				{
+					iKeep[ j ][ 0 ] = x1 = canvasRect.left + cx * ( rand( ) % iBlockNum );
+					iKeep[ j ][ 1 ] = y1 = canvasRect.top + cy * ( rand( ) % iBlockNum );
+					iKeep[ j ][ 2 ] = x2 = canvasRect.left + cx * ( rand( ) % iBlockNum );
+					iKeep[ j ][ 3 ] = y2 = canvasRect.top + cy * ( rand( ) % iBlockNum );
+				}
+				else
+				{
+					x1 = iKeep[ NUM - j - 1 ][ 0 ];
+					y1 = iKeep[ NUM - j - 1 ][ 1 ];
+					x2 = iKeep[ NUM - j - 1 ][ 2 ];
+					y2 = iKeep[ NUM - j - 1 ][ 3 ];
+				}
+
+				BitBlt( hdcMem, 0, 0, cx, cy, hdcSrc, x1, y1, SRCCOPY );
+				BitBlt( hdcSrc, x1, y1, cx, cy, hdcSrc, x2, y2, SRCCOPY );
+				BitBlt( hdcSrc, x2, y2, cx, cy, hdcMem, 0, 0, SRCCOPY );
+				Sleep( 50 );
+			}
+		}
+		DeleteObject( hBitmap );
+		ReleaseDC( hWnd, hdcSrc );
+		DeleteDC( hdcMem );
+		LockWindowUpdate( NULL );
+		break;
+	}
 	case IDM_HELP_ABOUT:
 		DialogBox( hInst, MAKEINTRESOURCE( IDD_ABOUTBOX ), hWnd, About );
 		break;
@@ -1265,7 +1312,7 @@ void DealInitCommonDlg(HWND hWnd )
 	ofn.lpstrDefExt = TEXT( "bmp" );
 	ofn.lpstrFileTitle = szFileTitle;
 	ofn.lpstrFile = szFileName;
-	ofn.Flags = OFN_HIDEREADONLY | OFN_CREATEPROMPT;
+	ofn.Flags = OFN_HIDEREADONLY | OFN_CREATEPROMPT | OFN_OVERWRITEPROMPT;
 }
 
 void DealClearUndoStack( std::vector<HDC>& hdcMemUndoStack )
@@ -1377,8 +1424,6 @@ HBITMAP CreateDIBSectionFromDIBFile( const TCHAR* pszFileName )
 	bSuccess = ReadFile( hFile, pbmi, dwInfoSize, &dwBytesRead, NULL );
 	if ( !bSuccess || dwBytesRead != dwInfoSize )
 	{
-		DWORD dwError = GetLastError( );
-
 		free( pbmi );
 		CloseHandle( hFile );
 		return NULL;

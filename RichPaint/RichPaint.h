@@ -50,8 +50,6 @@ BOOL OnPaint( HWND hWnd );
 BOOL OnDrawItem( HWND hWnd, const DRAWITEMSTRUCT * lpDrawItem );
 BOOL OnDestroy( HWND hwnd );
 
-BOOL TransWinOnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct );
-
 
 //============================================================================
 //
