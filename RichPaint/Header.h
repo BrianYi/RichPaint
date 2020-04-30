@@ -39,6 +39,8 @@
 #define ID_REDO							IDB_REDO
 #define ID_TRABSPARENT_WIN				503
 #define ID_ANIMATION					504
+#define ID_HOST_WIN						505
+#define ID_MAGNIFIER_WIN				506
 
 //============================================================================
 //
@@ -88,3 +90,5 @@
 #define SET_GLOBAL_CURSOR(hCursor)	\
 	SetClassLongPtr( GetParent(tools[ 0 ].hWnd), GCLP_HCURSOR, (LONG)hCursor );	\
 	SetClassLongPtr( tools[ 0 ].hWnd, GCLP_HCURSOR, ( LONG ) hCursor );	
+
+#define MAGFACTOR  2.0f

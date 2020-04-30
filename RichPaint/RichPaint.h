@@ -32,6 +32,7 @@ LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 INT_PTR CALLBACK    About( HWND, UINT, WPARAM, LPARAM );
 LRESULT CALLBACK    TransparentWndProc( HWND, UINT, WPARAM, LPARAM );
 INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+LRESULT CALLBACK HostWndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 
 //============================================================================
@@ -40,6 +41,7 @@ INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARA
 //
 BOOL OnCreate( HWND hWnd, LPCREATESTRUCT lpCreateStruct );
 BOOL OnInitMenu( HWND hwnd, HMENU hMenu );
+BOOL OnKey( HWND hwnd, UINT vk, BOOL fDown, int cRepeat, UINT flags );
 BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags );
 BOOL OnLButtonUp( HWND hWnd, int x, int y, UINT keyFlags );
 BOOL OnMouseMove( HWND hWnd, int x, int y, UINT keyFlags );

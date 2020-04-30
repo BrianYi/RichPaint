@@ -5,13 +5,18 @@
 #include "resource.h"
 #include "RichPaint.h"
 #include <windowsx.h>
+#include <magnification.h>
+#include <assert.h>
 
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
-WCHAR szTitle[ MAX_LOADSTRING ];                  // The title bar text
-WCHAR szWindowClass[ MAX_LOADSTRING ];            // the main window class name
-WCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
+TCHAR szTitle[ MAX_LOADSTRING ];                  // The title bar text
+TCHAR szWindowClass[ MAX_LOADSTRING ];            // the main window class name
+TCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
+TCHAR szHostWindowClassName[ MAX_LOADSTRING ];            // the main window class name
+LRESULT CALLBACK HostWndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+void CALLBACK       UpdateMagWindow( HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime );
 
 
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
@@ -25,13 +30,16 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
 	// TODO: Place code here.
 
 	// Initialize global strings
-	LoadStringW( hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING );
-	LoadStringW( hInstance, IDC_RICHPAINT, szWindowClass, MAX_LOADSTRING );
+	LoadString( hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING );
+	LoadString( hInstance, IDC_RICHPAINT, szWindowClass, MAX_LOADSTRING );
 	MyRegisterClass( hInstance );
-
+	
 	// Perform application initialization:
 	if ( !InitInstance( hInstance, nCmdShow ) )
 	{
+		TCHAR szBuffer[128];
+		wsprintf( szBuffer, TEXT( "%lu" ), GetLastError() );
+		MessageBox( NULL, szBuffer, szWindowClass, MB_OK );
 		return FALSE;
 	}
 
@@ -61,8 +69,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
 //
 ATOM MyRegisterClass( HINSTANCE hInstance )
 {
-	WNDCLASSEXW wcex;
-	BOOL bSuccess = FALSE;
+	WNDCLASSEX wcex;
 
 	wcex.cbSize = sizeof( WNDCLASSEX );
 
@@ -74,17 +81,33 @@ ATOM MyRegisterClass( HINSTANCE hInstance )
 	wcex.hIcon = LoadIcon( hInstance, MAKEINTRESOURCE( IDI_RICHPAINT ) );
 	wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
 	wcex.hbrBackground = ( HBRUSH ) ( COLOR_WINDOW + 2 );
-	wcex.lpszMenuName = MAKEINTRESOURCEW( IDC_RICHPAINT );
+	wcex.lpszMenuName = MAKEINTRESOURCE( IDC_RICHPAINT );
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon( wcex.hInstance, MAKEINTRESOURCE( IDI_RICHPAINT ) );
-	bSuccess = RegisterClassExW( &wcex );
+	BOOL bSuccess = RegisterClassEx( &wcex );
+	assert( bSuccess );
 
 	lstrcpy( szTransparentClass, TEXT( "TRANSPARENT" ) );
 	wcex.lpfnWndProc = TransparentWndProc;
 	wcex.hbrBackground = (HBRUSH)GetStockObject( WHITE_BRUSH );
 	wcex.lpszClassName = szTransparentClass;
-	bSuccess = RegisterClassExW( &wcex );
+	bSuccess = RegisterClassEx( &wcex ); 
+	assert( bSuccess );
 
+	bSuccess = MagInitialize();
+	assert( bSuccess );
+
+	lstrcpy( szHostWindowClassName, TEXT( "HostWindow" ) );
+	wcex.cbSize = sizeof WNDCLASSEX;
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = HostWndProc;
+	wcex.hInstance = hInstance;
+	wcex.hCursor = LoadCursor( NULL, IDC_ARROW );
+	wcex.hbrBackground = (HBRUSH)(1 + COLOR_BTNFACE);
+	wcex.lpszClassName = szHostWindowClassName;
+	bSuccess = RegisterClassEx( &wcex );
+	assert( bSuccess );
+	
 	return TRUE;
 }
 
@@ -102,7 +125,7 @@ BOOL InitInstance( HINSTANCE hInstance, int nCmdShow )
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW( szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+	HWND hWnd = CreateWindow( szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 							   CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr );
 	if ( !hWnd )
 	{
@@ -132,6 +155,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 	{
 		HANDLE_MSG( hWnd, WM_CREATE, OnCreate );
 		HANDLE_MSG( hWnd, WM_INITMENU, OnInitMenu );
+		HANDLE_MSG( hWnd, WM_KEYDOWN, OnKey );
 		HANDLE_MSG( hWnd, WM_LBUTTONDOWN, OnLButtonDown );
 		HANDLE_MSG( hWnd, WM_LBUTTONUP, OnLButtonUp );
 		HANDLE_MSG( hWnd, WM_MOUSEMOVE, OnMouseMove );

@@ -2,6 +2,8 @@
 #include "Header.h"
 #include "RichPaint.h"
 #include <windowsx.h>
+#include <magnification.h>
+#include <assert.h>
 
 Tool tools[ ] =
 {
@@ -37,6 +39,10 @@ DWORD dwBasicColors[ ] = { 0,64,128,255 };
 const DWORD cBasicColor = sizeof dwBasicColors / sizeof dwBasicColors[ 0 ];
 HWND hWndBasicColor[ cBasicColor * cBasicColor * cBasicColor ];
 const DWORD cTools = sizeof tools / sizeof tools[ 0 ];
+HWND                hwndMag;
+HWND                hwndHost;
+RECT                magWindowRect;
+RECT                hostWindowRect;
 
 DWORD dwCurToolIdx = 0;
 DWORD cColor = cBasicColor * cBasicColor * cBasicColor;
@@ -49,8 +55,9 @@ HDC hdcMemCanvas;
 HBITMAP hBitmapCanvas;
 HPEN g_hPen;
 
-extern WCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
+extern TCHAR szTransparentClass[ MAX_LOADSTRING ];            // the main window class name
 extern HINSTANCE hInst;
+extern TCHAR szHostWindowClassName[MAX_LOADSTRING];
 
 BOOL DlgOnInitAnimation( HWND hWnd, HWND hWndFocus, LPARAM lParam )
 {
@@ -164,6 +171,24 @@ BOOL OnInitMenu( HWND hwnd, HMENU hMenu )
 	return TRUE;
 }
 
+BOOL OnKey( HWND hwnd, UINT vk, BOOL fDown, int cRepeat, UINT flags )
+{
+	switch ( vk )
+	{
+		case VK_ESCAPE:
+		{
+			if ( hwndHost )
+				CloseWindow( hwndHost );
+			if (hwndMag )
+				CloseWindow( hwndMag );
+			return TRUE;
+		}
+		default:
+			break;
+	}
+	return TRUE;
+}
+
 BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags )
 {
 	POINT pt;
@@ -230,6 +255,9 @@ BOOL OnLButtonDown( HWND hWnd, BOOL fDoubleClick, int x, int y, UINT keyFlags )
 	case ID_COLORPICKER:
 		break;
 	case ID_MAGNIFIER:
+	{
+		break;
+	}
 	case ID_ZOOMIN:
 	case ID_ZOOMOUT:
 	case ID_COPY:
@@ -449,6 +477,49 @@ BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 			}
 			break;
 		}
+		case ID_MAGNIFIER:
+		{
+			GetCursorPos( &ptMouse );
+			hostWindowRect.top = ptMouse.y - 150/*GetSystemMetrics( SM_CYSCREEN ) * 1 / 4*/;
+			hostWindowRect.bottom = ptMouse.y + 150/*GetSystemMetrics( SM_CYSCREEN ) * 3 / 4*/;
+			hostWindowRect.left = ptMouse.x - 150/*GetSystemMetrics( SM_CXSCREEN ) * 1 / 4*/;
+			hostWindowRect.right = ptMouse.x + 150/*GetSystemMetrics( SM_CXSCREEN ) * 3 / 4*/;
+
+			if ( hwndHost )
+				DestroyWindow( hwndHost );
+
+			hwndHost = CreateWindowEx( WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT,
+				szHostWindowClassName, NULL,
+				WS_POPUP | WS_VISIBLE | WS_SYSMENU | WS_BORDER,
+				hostWindowRect.left, hostWindowRect.top,
+				hostWindowRect.right - hostWindowRect.left,
+				hostWindowRect.bottom - hostWindowRect.top,
+				NULL, NULL, hInst, NULL );
+			assert( hwndHost );
+
+			SetLayeredWindowAttributes( hwndHost, 0, 255, LWA_ALPHA );
+
+			GetClientRect( hwndHost, &magWindowRect );
+
+			if ( hwndHost )
+				DestroyWindow( hwndMag );
+
+			hwndMag = CreateWindow( WC_MAGNIFIER, TEXT( "MagnifierWindow" ),
+				WS_CHILD | /*MS_SHOWMAGNIFIEDCURSOR |*/ WS_VISIBLE,
+				magWindowRect.left, magWindowRect.top, magWindowRect.right, magWindowRect.bottom,
+				hwndHost, NULL, hInst, NULL );
+			assert( hwndMag );
+
+			MAGTRANSFORM matrix;
+			memset( &matrix, 0, sizeof matrix );
+			matrix.v[0][0] = MAGFACTOR;
+			matrix.v[1][1] = MAGFACTOR;
+			matrix.v[2][2] = 1.0f;
+
+			BOOL bSuccess = MagSetWindowTransform( hwndMag, &matrix );
+			assert( bSuccess );
+			break;
+		}
 		default:
 			break;
 		}
@@ -572,6 +643,7 @@ BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 		HDC hdcMem = CreateCompatibleDC( hdcSrc );
 		HBITMAP hBitmap = CreateCompatibleBitmap( hdcSrc, cx, cy );
 		SelectObject( hdcMem, hBitmap );
+		SelectObject( hdcMem, GetStockBrush( NULL_BRUSH ) );
 
 		for ( i = 0; i < 2; ++i )
 		{
@@ -592,6 +664,7 @@ BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 					y2 = iKeep[ NUM - j - 1 ][ 3 ];
 				}
 
+
 				BitBlt( hdcMem, 0, 0, cx, cy, hdcSrc, x1, y1, SRCCOPY );
 				BitBlt( hdcSrc, x1, y1, cx, cy, hdcSrc, x2, y2, SRCCOPY );
 				BitBlt( hdcSrc, x2, y2, cx, cy, hdcMem, 0, 0, SRCCOPY );
@@ -602,6 +675,8 @@ BOOL OnCommand( HWND hWnd, int id, HWND hwndCtl, UINT codeNotify )
 		ReleaseDC( hWnd, hdcSrc );
 		DeleteDC( hdcMem );
 		LockWindowUpdate( NULL );
+		Sleep( 1000 );
+		InvalidateRect( hWnd, &canvasRect, FALSE );
 		break;
 	}
 	case IDM_HELP_ABOUT:
@@ -722,6 +797,69 @@ INT_PTR CALLBACK AnimationDlgProc( HWND hWnd, UINT message, WPARAM wParam, LPARA
 	return FALSE;
 }
 
+LRESULT CALLBACK HostWndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+{
+	const UINT  timerInterval = 16;
+	switch ( message )
+	{
+		case WM_CREATE:
+		{
+			SetTimer( hWnd, 1, timerInterval, NULL );
+			return 0;
+		}
+		case WM_TIMER:
+		{
+			POINT mousePoint;
+			GetCursorPos( &mousePoint );
+			int width = magWindowRect.right - magWindowRect.left;
+			int height = magWindowRect.bottom - magWindowRect.top;
+			int sourceWidth = (int)(width / MAGFACTOR);
+			int sourceHeight = (int)(height / MAGFACTOR);
+			RECT sourceRect;
+			sourceRect.left = mousePoint.x - sourceWidth / 2;
+			sourceRect.top = mousePoint.y - sourceHeight / 2;
+
+			MagSetWindowSource( hwndMag, sourceRect );
+			SetWindowPos( hwndHost, HWND_TOPMOST,
+				mousePoint.x - width / 2 - GetSystemMetrics( SM_CXBORDER ),
+				mousePoint.y - height / 2 - GetSystemMetrics( SM_CYBORDER ),
+				width, height,
+				SWP_NOACTIVATE | /*SWP_NOMOVE |*/ SWP_NOSIZE );
+
+			InvalidateRect( hwndMag, NULL, TRUE );
+			return 0;
+		}
+		case WM_KEYDOWN:
+			if ( wParam == VK_ESCAPE )
+			{
+				/*SendMessage( hWnd, WM_CLOSE, 0, 0 );*/
+				DestroyWindow( hWnd );
+			}
+			return 0;
+
+		case WM_SYSCOMMAND:
+			if ( GET_SC_WPARAM( wParam ) == SC_MAXIMIZE )
+			{
+				return 0;
+			}
+			break;
+
+
+		case WM_SIZE:
+			if ( hwndMag )
+			{
+				GetClientRect( hWnd, &magWindowRect );
+				SetWindowPos( hwndMag, NULL,
+					magWindowRect.left, magWindowRect.top, magWindowRect.right, magWindowRect.bottom, 0 );
+			}
+			return 0;
+
+		default:
+			break;
+	}
+	return DefWindowProc( hWnd, message, wParam, lParam );
+}
+
 #define WM_LINECHANGE	(WM_USER+1)
 #define CARET_X(iChar)	(iChar % cxBuffer)
 #define CARET_Y(iChar)	(iChar / cxBuffer)
@@ -810,15 +948,16 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		cxChar = tm.tmAveCharWidth;
 		cyChar = tm.tmHeight;
 
-		iChar = iNumChar = 0;
-
 		cxMaxBuffer = GetSystemMetrics( SM_CXSCREEN ) / cxChar;
 		cyMaxBuffer = GetSystemMetrics( SM_CYSCREEN ) / cyChar;
 
 		if ( pBuffer )
 			free( pBuffer );
-		pBuffer = ( TCHAR * ) malloc( cxMaxBuffer * cyMaxBuffer * sizeof TCHAR );
-		_tcsnset( pBuffer, TEXT( ' ' ), ( size_t ) ( cxMaxBuffer * cyMaxBuffer ) );
+		pBuffer = (TCHAR *)malloc( cxMaxBuffer * cyMaxBuffer * sizeof( TCHAR ) );
+		wmemset( pBuffer, TEXT(' '), cxMaxBuffer * cyMaxBuffer );
+
+		iChar = iNumChar = 0;
+		
 		break;
 	}
 	case WM_SETFONT:
@@ -827,9 +966,10 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		GetObject( ( HFONT ) wParam, sizeof LOGFONT, &logFont );
 		hFont = CreateFontIndirect( &logFont );
 		HDC hdc = GetDC( hWnd );
+		SelectObject( hdc, hFont );
 		GetTextMetrics( hdc, &tm );
-		cyChar = abs( logFont.lfHeight );
-		cxChar = tm.tmAveCharWidth * ( cyChar / tm.tmHeight );
+		cyChar = tm.tmHeight;
+		cxChar = tm.tmAveCharWidth;
 		RECT rcWindow;
 		int cxClient = cxChar * cxBuffer;
 		int cyClient = cyChar * cyBuffer;
@@ -863,18 +1003,18 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		pt.y = ( short ) HIWORD( lParam );
 
 		HMENU hMenu = CreatePopupMenu( );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_CUT, TEXT( "Cut" ) );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_COPY, TEXT( "Copy" ) );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_PASTE, TEXT( "Paste" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_CUT, TEXT( "Cut\tCtrl+X" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_COPY, TEXT( "Copy\tCtrl+C" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_PASTE, TEXT( "Paste\tCtrl+V" ) );
 		AppendMenu( hMenu, MF_STRING, IDM_TRANS_DEL, TEXT( "Clear" ) );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_SELALL, TEXT( "Select All" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_SELALL, TEXT( "Select All\tCtrl+A" ) );
 		AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
 		AppendMenu( hMenu, MF_STRING, IDM_TRANS_FONT, TEXT( "Font" ) );
 		AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_FINDREPLACE, TEXT( "Find or Replace" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_FINDREPLACE, TEXT( "Find or Replace\tCtrl+F/Ctrl+R" ) );
 		AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo" ) );
-		AppendMenu( hMenu, MF_STRING, IDM_TRANS_REDO, TEXT( "Redo" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo\tCtrl+Z" ) );
+		AppendMenu( hMenu, MF_STRING, IDM_TRANS_REDO, TEXT( "Redo\tCtrl+Y" ) );
 
 
 		EnableMenuItem( hMenu, IDM_TRANS_CUT, MF_DISABLED );
@@ -903,6 +1043,7 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		{
 		case IDM_TRANS_CUT:
 		case IDM_TRANS_COPY:
+			break;
 		case IDM_TRANS_PASTE:
 		{
 			if ( IsClipboardFormatAvailable( CF_UNICODETEXT ) )
@@ -923,7 +1064,7 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 		}
 		case IDM_TRANS_DEL:
 		{
-			_tcsnset( pBuffer, TEXT( ' ' ), ( size_t ) ( cxMaxBuffer * cyMaxBuffer ) );
+			wmemset( pBuffer, TEXT( ' ' ), cxMaxBuffer * cyMaxBuffer );
 			iNumChar = iChar = 0;
 			SetCaretPos( CARET_X( iChar ), CARET_Y( iChar ) );
 			InvalidateRect( hWnd, NULL, FALSE );
@@ -1018,10 +1159,11 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 
 		// text background is transparent
 		SetBkMode( hdcMem, TRANSPARENT );
-
+		
 		// select font
 		SelectObject( hdcMem, hFont );
 
+		//DrawText( hdcMem, pBuffer, iChar + 1, &rcClient, DT_WORDBREAK | DT_END_ELLIPSIS );
 		for ( y = 0; y <= cyBuffer; ++y )
 		{
 			TextOut( hdcMem, 0, y * cyChar, pBuffer + y * cxBuffer, cxBuffer );
@@ -1125,7 +1267,7 @@ LRESULT CALLBACK TransparentWndProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 				break;
 			}
 			case '\x1B': // ESC
-				_tcsnset( pBuffer, TEXT( ' ' ), ( size_t ) ( cxBuffer * cyBuffer ) );
+				wmemset( pBuffer, TEXT( ' ' ), cxBuffer * cyBuffer );
 				iChar = 0;
 				iNumChar = 0;
 				InvalidateRect( hWnd, NULL, FALSE );
@@ -1213,13 +1355,27 @@ BOOL OnContextMenu( HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos )
 		return FALSE;
 	
 	HMENU hMenu = CreatePopupMenu( );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_CUT, TEXT( "Cut" ) );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_COPY, TEXT( "Copy" ) );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_PASTE, TEXT( "Paste" ) );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_DEL, TEXT( "Delete" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_CUT, TEXT( "Cut\tCtrl+X" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_COPY, TEXT( "Copy\tCtrl+C" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_PASTE, TEXT( "Paste\tCtrl+V" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_DEL, TEXT( "Delete\tDel" ) );
 	AppendMenu( hMenu, MF_SEPARATOR, 0, 0 );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo" ) );
-	AppendMenu( hMenu, MF_STRING, IDM_TRANS_REDO, TEXT( "Redo" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_UNDO, TEXT( "Undo\tCtrl+Z" ) );
+	AppendMenu( hMenu, MF_STRING, IDM_TRANS_REDO, TEXT( "Redo\tCtrl+Y" ) );
+
+	EnableMenuItem( hMenu, IDM_TRANS_CUT, MF_DISABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_COPY, MF_DISABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_PASTE,
+					IsClipboardFormatAvailable( CF_UNICODETEXT ) ?
+					MF_ENABLED : MF_DISABLED );
+
+	EnableMenuItem( hMenu, IDM_TRANS_DEL, MF_ENABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_SELALL, MF_DISABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_FONT, MF_ENABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_FINDREPLACE, MF_DISABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_UNDO, MF_DISABLED );
+	EnableMenuItem( hMenu, IDM_TRANS_REDO, MF_DISABLED );
+
 	TrackPopupMenu( hMenu, TPM_RIGHTBUTTON, pt.x, pt.y,
 					0, hwnd, NULL );
 	DestroyMenu( hMenu );
